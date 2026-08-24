@@ -1,7 +1,7 @@
 # Plataforma de Votación Electrónica
 
 <p align="center">
-  <img src="https://media.giphy.com/media/26FPJGjhefSJuaRhu/giphy.gif" alt="Voting Animation" width="350"/>
+  <img src="https://cdn.pixabay.com/animation/2024/03/04/18/38/18-38-28-378_512.gif" alt="Voting Animation" height="250"/>
 </p>
 <!-- Nota: Puedes cambiar la URL del src por el GIF que prefieras -->
 
