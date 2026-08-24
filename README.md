@@ -1,10 +1,5 @@
 # Plataforma de Votación Electrónica
 
-<p align="center">
-  <img src="https://cdn.pixabay.com/animation/2024/03/04/18/38/18-38-28-378_512.gif" alt="Voting Animation" height="250"/>
-</p>
-<!-- Nota: Puedes cambiar la URL del src por el GIF que prefieras -->
-
 ## 1. Contextualización del Tema
 
 ### 1.1 ¿Qué es una Plataforma de Votación Electrónica?
