@@ -33,3 +33,159 @@ Desarrollar un prototipo funcional de una **Plataforma de Votación Electrónica
 3. **Garantizar el secreto y la privacidad del voto:** Diseñar la lógica de emisión de papeletas digitales de forma que la identidad del usuario no quede vinculada a la opción seleccionada.
 4. **Construir el motor de conteo automatizado:** Desarrollar el módulo encargado de registrar, tabular y totalizar los votos emitidos para presentar los resultados del escrutinio de manera precisa.
 5. **Crear un registro de eventos y auditoría:** Implementar un sistema de registro cronológico (*logs*) para rastrear eventos clave (apertura de votación, emisión de votos, cierre de jornada y emisión de resultados), permitiendo verificar la transparencia del proceso.
+
+---
+
+## 3. Arquitectura y Diseño del Sistema
+
+### 3.1 Diagrama de Clases (UML)
+El siguiente diagrama representa el modelo de clases y la relación estructural entre los módulos de configuración, emisión de votos y parametrización de elecciones del sistema:
+
+```mermaid
+classDiagram
+    direction TB
+
+    %% MÓDULO CORE - SINGLETON
+    class ElectoralConfigManager {
+        -ElectoralConfigManager _instance$
+        -Lock _lock$
+        -bool _initialized$
+        +str institution_name
+        +str election_title
+        +int max_votes_per_citizen
+        -_bool _is_open
+        +is_open() bool
+        +open_voting() void
+        +close_voting() void
+        +reset_for_testing()$ void
+    }
+
+    %% MÓDULO VOTING - FACTORY METHOD
+    class Ballot {
+        <<abstract>>
+        +str ballot_id
+        +datetime issued_at
+        +get_selection()* str
+    }
+    class CandidateBallot {
+        +str candidate_id
+        +str candidate_name
+        +str party_name
+        +get_selection() str
+    }
+    class ReferendumBallot {
+        +str question_code
+        +str decision
+        +get_selection() str
+    }
+    class BlankBallot {
+        +str category
+        +get_selection() str
+    }
+    Ballot <|-- CandidateBallot
+    Ballot <|-- ReferendumBallot
+    Ballot <|-- BlankBallot
+
+    class BallotCreator {
+        <<abstract>>
+        +create_ballot(**kwargs)* Ballot
+        +issue_ballot(**kwargs) Ballot
+    }
+    class CandidateBallotCreator {
+        +create_ballot(**kwargs) CandidateBallot
+    }
+    class ReferendumBallotCreator {
+        +create_ballot(**kwargs) ReferendumBallot
+    }
+    class BlankBallotCreator {
+        +create_ballot(**kwargs) BlankBallot
+    }
+    BallotCreator <|-- CandidateBallotCreator
+    BallotCreator <|-- ReferendumBallotCreator
+    BallotCreator <|-- BlankBallotCreator
+    BallotCreator ..> Ballot : crea
+
+    %% MÓDULO ELECTION - ABSTRACT FACTORY
+    class CredentialValidator {
+        <<abstract>>
+        +validate_credential(document_id)* bool
+        +get_document_type()* str
+    }
+    class NationalCitizenValidator {
+        +validate_credential(document_id) bool
+        +get_document_type() str
+    }
+    class StudentCodeValidator {
+        +validate_credential(document_id) bool
+        +get_document_type() str
+    }
+    CredentialValidator <|-- NationalCitizenValidator
+    CredentialValidator <|-- StudentCodeValidator
+
+    class BallotHeader {
+        <<abstract>>
+        +render_header()* str
+    }
+    class NationalBallotHeader {
+        +render_header() str
+    }
+    class UniversityBallotHeader {
+        +render_header() str
+    }
+    BallotHeader <|-- NationalBallotHeader
+    BallotHeader <|-- UniversityBallotHeader
+
+    class TallyRule {
+        <<abstract>>
+        +evaluate_winner(votes_summary)* str
+    }
+    class AbsoluteMajorityTallyRule {
+        +evaluate_winner(votes_summary) str
+    }
+    class SimplePluralityTallyRule {
+        +evaluate_winner(votes_summary) str
+    }
+    TallyRule <|-- AbsoluteMajorityTallyRule
+    TallyRule <|-- SimplePluralityTallyRule
+
+    class ElectoralFamilyFactory {
+        <<abstract>>
+        +create_validator()* CredentialValidator
+        +create_header()* BallotHeader
+        +create_tally_rule()* TallyRule
+    }
+    class NationalElectionFactory {
+        +create_validator() CredentialValidator
+        +create_header() BallotHeader
+        +create_tally_rule() TallyRule
+    }
+    class UniversityElectionFactory {
+        +create_validator() CredentialValidator
+        +create_header() BallotHeader
+        +create_tally_rule() TallyRule
+    }
+    ElectoralFamilyFactory <|-- NationalElectionFactory
+    ElectoralFamilyFactory <|-- UniversityElectionFactory
+    ElectoralFamilyFactory ..> CredentialValidator : fabrica
+    ElectoralFamilyFactory ..> BallotHeader : fabrica
+    ElectoralFamilyFactory ..> TallyRule : fabrica
+```
+
+---
+
+## 4. Avances del Proyecto
+
+### 4.1 Avance 1: Implementación del Patrón Singleton
+* **Módulo:** `src/core/config.py` (`ElectoralConfigManager`).
+* **Resumen:** Se centralizó el estado y la configuración global de la jornada electoral garantizando una única instancia en memoria con soporte de concurrencia segura (*thread-safety*) mediante *Double-Checked Locking*. Se implementó control de re-inicialización y un método de aislamiento para pruebas automatizadas.
+* **Documentación completa del avance:** [Ver documento técnico del Avance 1](avances/avance_1/patron_singleton.md).
+
+### 4.2 Avance 2: Implementación del Patrón Factory Method
+* **Módulo:** `src/modules/voting/ballot_factory.py` (`BallotCreator` y jerarquía `Ballot`).
+* **Resumen:** Se desacopló la lógica de emisión de votos de la instanciación concreta de papeletas electorales (`CandidateBallot`, `ReferendumBallot`, `BlankBallot`). Cumple con el principio Open/Closed (OCP), permitiendo incorporar nuevas modalidades de voto sin modificar el código base.
+* **Documentación completa del avance:** [Ver documento técnico del Avance 2](avances/avance_2/patron_factory_method.md).
+
+### 4.3 Avance 3: Implementación del Patrón Abstract Factory
+* **Módulo:** `src/modules/election/election_factory.py` (`ElectoralFamilyFactory`).
+* **Resumen:** Se implementó la creación de familias completas y coherentes de componentes según la jurisdicción de la elección (Nacional vs. Universitaria), abarcando validación de identidad, membrete oficial de papeleta y reglas de decisión para el escrutinio, garantizando la inversión de dependencias (DIP).
+* **Documentación completa del avance:** [Ver documento técnico del Avance 3](avances/avance_3/patron_abstract_factory.md).
