@@ -169,6 +169,69 @@ classDiagram
     ElectoralFamilyFactory ..> CredentialValidator : fabrica
     ElectoralFamilyFactory ..> BallotHeader : fabrica
     ElectoralFamilyFactory ..> TallyRule : fabrica
+
+    %% MÓDULO TALLY - BUILDER
+    class ElectoralTallyReport {
+        +str election_title
+        +str jurisdiction
+        +datetime generated_at
+        +List~str~ table_ids
+        +Dict candidate_votes
+        +int blank_votes
+        +int null_votes
+        +int total_votes
+        +List~str~ officer_signatures
+        +str integrity_hash
+        +to_formatted_summary() str
+    }
+    class TallyReportBuilder {
+        <<abstract>>
+        +reset()* TallyReportBuilder
+        +set_header(election_title, jurisdiction)* TallyReportBuilder
+        +add_table_batch(table_ids)* TallyReportBuilder
+        +set_votes(candidate_votes, blank_votes, null_votes)* TallyReportBuilder
+        +add_officer_signature(signature_code)* TallyReportBuilder
+        +build()* ElectoralTallyReport
+    }
+    class OfficialTallyReportBuilder {
+        +reset() OfficialTallyReportBuilder
+        +set_header(election_title, jurisdiction) OfficialTallyReportBuilder
+        +add_table_batch(table_ids) OfficialTallyReportBuilder
+        +set_votes(candidate_votes, blank_votes, null_votes) OfficialTallyReportBuilder
+        +add_officer_signature(signature_code) OfficialTallyReportBuilder
+        +build() ElectoralTallyReport
+    }
+    class TallyReportDirector {
+        -TallyReportBuilder _builder
+        +construct_preliminary_bulletin(title, jurisdiction, tables, votes) ElectoralTallyReport
+    }
+    TallyReportBuilder <|-- OfficialTallyReportBuilder
+    OfficialTallyReportBuilder ..> ElectoralTallyReport : construye
+    TallyReportDirector o-- TallyReportBuilder
+
+    %% MÓDULO ELECTION - PROTOTYPE
+    class Prototype~T~ {
+        <<interface>>
+        +clone()* T
+    }
+    class VotingStation {
+        +str station_id
+        +str polling_place
+        +str zone_code
+        +List~str~ allowed_ballot_types
+        +str hardware_terminal_code
+        +bool is_active
+        +List~str~ assigned_officers
+        +clone() VotingStation
+        +assign_station(new_station_id, new_terminal_code, new_officers) VotingStation
+    }
+    class StationPrototypeRegistry {
+        -Dict _prototypes
+        +register_prototype(prototype_key, station) void
+        +get_clone(prototype_key) VotingStation
+    }
+    Prototype <|.. VotingStation
+    StationPrototypeRegistry o-- VotingStation
 ```
 
 ---
@@ -189,3 +252,13 @@ classDiagram
 * **Módulo:** `src/modules/election/election_factory.py` (`ElectoralFamilyFactory`).
 * **Resumen:** Se implementó la creación de familias completas y coherentes de componentes según la jurisdicción de la elección (Nacional vs. Universitaria), abarcando validación de identidad, membrete oficial de papeleta y reglas de decisión para el escrutinio, garantizando la inversión de dependencias (DIP).
 * **Documentación completa del avance:** [Ver documento técnico del Avance 3](avances/avance_3/patron_abstract_factory.md).
+
+### 4.4 Avance 4: Implementación del Patrón Builder
+* **Módulo:** `src/modules/tally/report_builder.py` (`TallyReportBuilder` y `ElectoralTallyReport`).
+* **Resumen:** Se implementó la construcción progresiva y desacoplada del Acta Oficial de Escrutinio y Cierre de Urnas, evitando el antipatrón de constructor telescópico. Garantiza la inmutabilidad de los cómputos consolidados y añade sellado digital automático mediante hash criptográfico SHA-256.
+* **Documentación completa del avance:** [Ver documento técnico del Avance 4](avances/avance_4/patron_builder.md).
+
+### 4.5 Avance 5: Implementación del Patrón Prototype
+* **Módulo:** `src/modules/election/station_prototype.py` (`VotingStation` y `StationPrototypeRegistry`).
+* **Resumen:** Se formalizó la clonación y replicación rápida de mesas y estaciones de votación a partir de plantillas operativas preconfiguradas. Se implementó copia profunda (*deep copy*) para asegurar el aislamiento de colecciones mutables (jurados y tarjetones autorizados) y personalización segura de terminales.
+* **Documentación completa del avance:** [Ver documento técnico del Avance 5](avances/avance_5/patron_prototype.md).
