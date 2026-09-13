@@ -13,6 +13,11 @@ from src.modules.election.election_factory import (
     NationalElectionFactory,
     UniversityElectionFactory,
 )
+from src.modules.election.station_prototype import (
+    Prototype,
+    VotingStation,
+    StationPrototypeRegistry,
+)
 
 __all__ = [
     "CredentialValidator",
@@ -27,4 +32,8 @@ __all__ = [
     "ElectoralFamilyFactory",
     "NationalElectionFactory",
     "UniversityElectionFactory",
+    "Prototype",
+    "VotingStation",
+    "StationPrototypeRegistry",
 ]
+
