@@ -241,24 +241,24 @@ classDiagram
 ### 4.1 Avance 1: Implementación del Patrón Singleton
 * **Módulo:** `src/core/config.py` (`ElectoralConfigManager`).
 * **Resumen:** Se centralizó el estado y la configuración global de la jornada electoral garantizando una única instancia en memoria con soporte de concurrencia segura (*thread-safety*) mediante *Double-Checked Locking*. Se implementó control de re-inicialización y un método de aislamiento para pruebas automatizadas.
-* **Documentación completa del avance:** [Ver documento técnico del Avance 1](avances/avance_1/patron_singleton.md).
+* **Documentación:** [Lectura en línea (Markdown)](avances/avance_1/patron_singleton.md) | [Descargar documento oficial (.docx)](<avances/avance_1/Avance Patrón de Diseño Singleton.docx>)
 
 ### 4.2 Avance 2: Implementación del Patrón Factory Method
 * **Módulo:** `src/modules/voting/ballot_factory.py` (`BallotCreator` y jerarquía `Ballot`).
 * **Resumen:** Se desacopló la lógica de emisión de votos de la instanciación concreta de papeletas electorales (`CandidateBallot`, `ReferendumBallot`, `BlankBallot`). Cumple con el principio Open/Closed (OCP), permitiendo incorporar nuevas modalidades de voto sin modificar el código base.
-* **Documentación completa del avance:** [Ver documento técnico del Avance 2](avances/avance_2/patron_factory_method.md).
+* **Documentación:** [Lectura en línea (Markdown)](avances/avance_2/patron_factory_method.md) | [Descargar documento oficial (.docx)](<avances/avance_2/Avance Patrón de Diseño Factory Method.docx>)
 
 ### 4.3 Avance 3: Implementación del Patrón Abstract Factory
 * **Módulo:** `src/modules/election/election_factory.py` (`ElectoralFamilyFactory`).
 * **Resumen:** Se implementó la creación de familias completas y coherentes de componentes según la jurisdicción de la elección (Nacional vs. Universitaria), abarcando validación de identidad, membrete oficial de papeleta y reglas de decisión para el escrutinio, garantizando la inversión de dependencias (DIP).
-* **Documentación completa del avance:** [Ver documento técnico del Avance 3](avances/avance_3/patron_abstract_factory.md).
+* **Documentación:** [Lectura en línea (Markdown)](avances/avance_3/patron_abstract_factory.md) | [Descargar documento oficial (.docx)](<avances/avance_3/Avance Patrón de Diseño Abstract Factory.docx>)
 
 ### 4.4 Avance 4: Implementación del Patrón Builder
 * **Módulo:** `src/modules/tally/report_builder.py` (`TallyReportBuilder` y `ElectoralTallyReport`).
 * **Resumen:** Se implementó la construcción progresiva y desacoplada del Acta Oficial de Escrutinio y Cierre de Urnas, evitando el antipatrón de constructor telescópico. Garantiza la inmutabilidad de los cómputos consolidados y añade sellado digital automático mediante hash criptográfico SHA-256.
-* **Documentación completa del avance:** [Ver documento técnico del Avance 4](avances/avance_4/patron_builder.md).
+* **Documentación:** [Lectura en línea (Markdown)](avances/avance_4/patron_builder.md) | [Descargar documento oficial (.docx)](<avances/avance_4/Avance Patrón de Diseño Builder.docx>)
 
 ### 4.5 Avance 5: Implementación del Patrón Prototype
 * **Módulo:** `src/modules/election/station_prototype.py` (`VotingStation` y `StationPrototypeRegistry`).
 * **Resumen:** Se formalizó la clonación y replicación rápida de mesas y estaciones de votación a partir de plantillas operativas preconfiguradas. Se implementó copia profunda (*deep copy*) para asegurar el aislamiento de colecciones mutables (jurados y tarjetones autorizados) y personalización segura de terminales.
-* **Documentación completa del avance:** [Ver documento técnico del Avance 5](avances/avance_5/patron_prototype.md).
+* **Documentación:** [Lectura en línea (Markdown)](avances/avance_5/patron_prototype.md) | [Descargar documento oficial (.docx)](<avances/avance_5/Avance Patrón de Diseño Prototype.docx>)
