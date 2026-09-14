@@ -262,3 +262,14 @@ classDiagram
 * **Módulo:** `src/modules/election/station_prototype.py` (`VotingStation` y `StationPrototypeRegistry`).
 * **Resumen:** Se formalizó la clonación y replicación rápida de mesas y estaciones de votación a partir de plantillas operativas preconfiguradas. Se implementó copia profunda (*deep copy*) para asegurar el aislamiento de colecciones mutables (jurados y tarjetones autorizados) y personalización segura de terminales.
 * **Documentación:** [Lectura en línea (Markdown)](avances/avance_5/patron_prototype.md) | [Descargar documento oficial (.docx)](<avances/avance_5/Avance Patrón de Diseño Prototype.docx>)
+
+---
+
+## 5. Próximos Pasos
+
+Con el núcleo del dominio y los patrones creacionales formalizados, los siguientes avances se enfocarán en dar vida visual e interactiva al prototipo mediante la incorporación de la interfaz de usuario y la capa de servicios web.
+
+A partir de las siguientes entregas, los avances vendrán acompañados de **demostraciones visuales y videos cortos** donde se evidenciará el funcionamiento del sistema en tiempo real:
+* **Autenticación e Ingreso:** Validación de identidad del elector y control de voto único.
+* **Cabina de Votación Digital:** Selección interactiva de candidatos y emisión anónima de la papeleta digital.
+* **Panel de Escrutinio y Resultados:** Visualización gráfica en tiempo real del conteo automatizado y generación del acta sellada.
