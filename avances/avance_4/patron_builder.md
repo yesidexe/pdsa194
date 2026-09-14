@@ -1,4 +1,4 @@
-# Documento de Avance: Patrón de Diseño Builder
+# Avance Patrón de Diseño Builder
 
 ## 1. Identificación del Avance
 * **Patrón de Diseño:** Builder (Creacional).

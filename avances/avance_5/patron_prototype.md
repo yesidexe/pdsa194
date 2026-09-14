@@ -1,4 +1,4 @@
-# Documento de Avance: Patrón de Diseño Prototype
+# Avance Patrón de Diseño Prototype
 
 ## 1. Identificación del Avance
 * **Patrón de Diseño:** Prototype (Creacional).
