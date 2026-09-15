@@ -238,6 +238,8 @@ classDiagram
 
 ## 4. Avances del Proyecto
 
+La documentación completa con los 5 avances hasta la fecha, y en formato docx, para netamente fines académicos estará disponible en la carpeta avances o [dando click acá](<avances/doc_completa.docx>)
+
 ### 4.1 Avance 1: Implementación del Patrón Singleton
 * **Módulo:** `src/core/config.py` (`ElectoralConfigManager`).
 * **Resumen:** Se centralizó el estado y la configuración global de la jornada electoral garantizando una única instancia en memoria con soporte de concurrencia segura (*thread-safety*) mediante *Double-Checked Locking*. Se implementó control de re-inicialización y un método de aislamiento para pruebas automatizadas.
