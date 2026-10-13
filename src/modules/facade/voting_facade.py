@@ -23,8 +23,11 @@ from src.modules.election.jurisdiction_composite import ElectoralUnit, Electoral
 from src.modules.voting.ballot_factory import (
     Ballot,
     BallotCreator,
+    CandidateBallot,
     CandidateBallotCreator,
+    ReferendumBallot,
     ReferendumBallotCreator,
+    BlankBallot,
     BlankBallotCreator,
 )
 from src.modules.voting.ballot_decorator import (
@@ -346,7 +349,12 @@ class VotingSystemFacade:
         return []
 
     def get_dashboard_summary(self) -> Dict[str, Any]:
-        """Genera un resumen métrico en tiempo real para paneles gráficos y APIs."""
+        """Genera un resumen métrico en tiempo real para paneles gráficos y APIs.
+
+        Totaliza anónimamente los votos depositados en la urna digital (_ballot_box),
+        proveyendo tanto los indicadores globales de participación como el desglose
+        por candidato y voto en blanco sin exponer la identidad de los votantes.
+        """
         total_census = self._census.get_total_registered() if self._census else 0
         total_votes = len(self._ballot_box)
         turnout_pct = (total_votes / total_census * 100) if total_census > 0 else 0.0
@@ -354,6 +362,29 @@ class VotingSystemFacade:
         header_str = "Encabezado Institucional Estándar"
         if self._family_factory is not None:
             header_str = self._family_factory.create_header().render_header()
+
+        # Desglose de sufragios custodiados anónimamente en la urna digital
+        candidate_votes: Dict[str, int] = {}
+        votes_by_candidate_id: Dict[str, int] = {}
+        votes_by_candidate_name: Dict[str, int] = {}
+        blank_votes: int = 0
+        null_votes: int = 0
+
+        for ballot in self._ballot_box:
+            base = getattr(ballot, "base_ballot", ballot)
+            if isinstance(base, CandidateBallot):
+                sel = ballot.get_selection()
+                candidate_votes[sel] = candidate_votes.get(sel, 0) + 1
+                votes_by_candidate_id[base.candidate_id] = votes_by_candidate_id.get(base.candidate_id, 0) + 1
+                votes_by_candidate_name[base.candidate_name] = votes_by_candidate_name.get(base.candidate_name, 0) + 1
+            elif isinstance(base, BlankBallot):
+                blank_votes += 1
+            else:
+                sel = ballot.get_selection()
+                if "VOTO EN BLANCO" in sel.upper():
+                    blank_votes += 1
+                else:
+                    candidate_votes[sel] = candidate_votes.get(sel, 0) + 1
 
         return {
             "institution_name": self._config.institution_name,
@@ -364,4 +395,9 @@ class VotingSystemFacade:
             "total_votes_cast": total_votes,
             "turnout_percentage": round(turnout_pct, 2),
             "total_stations_count": self._jurisdiction_tree.count_stations() if self._jurisdiction_tree else 0,
+            "candidate_votes": candidate_votes,
+            "votes_by_candidate_id": votes_by_candidate_id,
+            "votes_by_candidate_name": votes_by_candidate_name,
+            "blank_votes": blank_votes,
+            "null_votes": null_votes,
         }

@@ -19,6 +19,13 @@ class BallotSecurityDecorator(Ballot, ABC):
     def wrapped_ballot(self) -> Ballot:
         return getattr(self, "_wrapped_ballot")
 
+    @property
+    def base_ballot(self) -> Ballot:
+        """Desenvuelve recursivamente las capas de seguridad para acceder a la papeleta original."""
+        if isinstance(self.wrapped_ballot, BallotSecurityDecorator):
+            return self.wrapped_ballot.base_ballot
+        return self.wrapped_ballot
+
     def get_selection(self) -> str:
         """Delega la obtención de la opción elegida al componente envuelto."""
         return self.wrapped_ballot.get_selection()

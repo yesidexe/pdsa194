@@ -17,6 +17,11 @@ class Ballot(ABC):
         """Devuelve la opción seleccionada de forma legible."""
         pass
 
+    @property
+    def base_ballot(self) -> Ballot:
+        """Devuelve la instancia de papeleta base subyacente sin decoradores."""
+        return self
+
 
 @dataclass(frozen=True)
 class CandidateBallot(Ballot):

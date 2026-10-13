@@ -223,67 +223,61 @@
                 const candRes = await fetch('/api/candidates');
                 const candidates = await candRes.json();
 
-                // Obtener desglose
-                updateChartAndBreakdown(candidates, dash.total_votes_cast);
+                // Actualizar gráfico y desglose directamente con los datos de urna
+                updateChartAndBreakdown(candidates, dash);
 
             } catch (err) {
                 console.error("Error al refrescar escrutinio:", err);
             }
         }
 
-        function updateChartAndBreakdown(candidates, totalVotes) {
-            // Simulamos o agrupamos con el catálogo y voto en blanco
+        function updateChartAndBreakdown(candidates, dash) {
+            const totalVotes = dash.total_votes_cast || 0;
             const labels = candidates.map(c => c.candidate_name);
             labels.push("VOTO EN BLANCO");
 
             const colors = candidates.map(c => c.color || '#3B82F6');
             colors.push("#64748B");
 
-            // Fetch acta preliminar para conteos reales si la urna está activa
-            // O calcular sobre la marcha
-            fetch('/api/security/audit-log')
-                .then(r => r.json())
-                .then(logs => {
-                    const voteCounts = {};
-                    labels.forEach(l => voteCounts[l] = 0);
+            // Extraer votos calculados anónimamente por la urna digital
+            const votesById = dash.votes_by_candidate_id || {};
+            const votesByName = dash.votes_by_candidate_name || {};
+            const blankCount = dash.blank_votes || 0;
 
-                    logs.forEach(l => {
-                        if (l.action === 'EMISION_VOTO' && l.status === 'AUTORIZADO') {
-                            const match = l.details.match(/Opción:\s*'([^']+)'/);
-                            if (match && match[1]) {
-                                const sel = match[1];
-                                voteCounts[sel] = (voteCounts[sel] || 0) + 1;
-                            }
-                        }
-                    });
+            const dataValues = candidates.map(c => {
+                if (votesById[c.candidate_id] !== undefined) {
+                    return votesById[c.candidate_id];
+                }
+                if (votesByName[c.candidate_name] !== undefined) {
+                    return votesByName[c.candidate_name];
+                }
+                return 0;
+            });
+            dataValues.push(blankCount);
 
-                    const dataValues = labels.map(l => voteCounts[l] || 0);
+            chartInstance.data.labels = labels;
+            chartInstance.data.datasets[0].data = dataValues;
+            chartInstance.data.datasets[0].backgroundColor = colors;
+            chartInstance.update();
 
-                    chartInstance.data.labels = labels;
-                    chartInstance.data.datasets[0].data = dataValues;
-                    chartInstance.data.datasets[0].backgroundColor = colors;
-                    chartInstance.update();
-
-                    // Renderizar lista en panel derecho
-                    const breakdownEl = document.getElementById('resultsBreakdownList');
-                    breakdownEl.innerHTML = labels.map((name, i) => {
-                        const count = dataValues[i];
-                        const pct = totalVotes > 0 ? ((count / totalVotes) * 100).toFixed(1) : '0.0';
-                        return `
-                            <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                                <div class="flex items-center gap-2.5">
-                                    <span class="w-3 h-3 rounded-full" style="background-color: ${colors[i]}"></span>
-                                    <div>
-                                        <p class="text-xs font-bold text-slate-800 leading-tight">${name}</p>
-                                        <p class="text-[10px] text-slate-400 font-medium">${pct}% del total</p>
-                                    </div>
-                                </div>
-                                <span class="text-sm font-extrabold text-slate-700">${count}</span>
+            // Renderizar lista en panel derecho
+            const breakdownEl = document.getElementById('resultsBreakdownList');
+            breakdownEl.innerHTML = labels.map((name, i) => {
+                const count = dataValues[i];
+                const pct = totalVotes > 0 ? ((count / totalVotes) * 100).toFixed(1) : '0.0';
+                return `
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-3 h-3 rounded-full" style="background-color: ${colors[i]}"></span>
+                            <div>
+                                <p class="text-xs font-bold text-slate-800 leading-tight">${name}</p>
+                                <p class="text-[10px] text-slate-400 font-medium">${pct}% del total</p>
                             </div>
-                        `;
-                    }).join('');
-                })
-                .catch(e => console.error(e));
+                        </div>
+                        <span class="text-sm font-extrabold text-slate-700">${count}</span>
+                    </div>
+                `;
+            }).join('');
         }
     </script>
 </body>

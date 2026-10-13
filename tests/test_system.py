@@ -123,6 +123,7 @@ def test_ballot_creators_and_decorators():
     dec_water = AuditWatermarkDecorator(dec_sig)
 
     assert dec_water.get_selection() == ballot.get_selection()
+    assert dec_water.base_ballot is ballot
     assert dec_sig.verify_signature("KEY_TEST") is True
     assert dec_sig.verify_signature("WRONG_KEY") is False
     meta = dec_water.get_security_metadata()
@@ -371,5 +372,77 @@ def test_census_api_endpoints(client):
         },
     )
     assert r_unauth.status_code == 403
+
+
+def test_dashboard_realtime_metrics(client):
+    """Verifica que el endpoint /api/dashboard retorne el desglose en tiempo real."""
+    # 1. Registrar electores de prueba en el censo con cédula numérica válida
+    r_reg1 = client.post(
+        "/api/census/voters",
+        json={
+            "document_id": "88776611",
+            "full_name": "Elector Dashboard Test",
+            "assigned_station_id": "MESA-01",
+            "is_eligible": True,
+            "election_type": "NATIONAL",
+            "user_id": "ADMIN-01",
+            "session_token": "TOKEN-ADMIN-MASTER-2026",
+        },
+    )
+    assert r_reg1.status_code == 200
+
+    r_reg2 = client.post(
+        "/api/census/voters",
+        json={
+            "document_id": "88776622",
+            "full_name": "Elector Blanco Test",
+            "assigned_station_id": "MESA-01",
+            "is_eligible": True,
+            "election_type": "NATIONAL",
+            "user_id": "ADMIN-01",
+            "session_token": "TOKEN-ADMIN-MASTER-2026",
+        },
+    )
+    assert r_reg2.status_code == 200
+
+    # 2. Emitir voto para un candidato
+    r_vote1 = client.post(
+        "/api/votes/cast",
+        json={
+            "document_id": "88776611",
+            "ballot_type": "candidate",
+            "selection": {
+                "candidate_id": "CAND-01",
+                "candidate_name": "Gabriel Silva",
+                "party_name": "Alianza Verde Digital",
+            },
+            "security_layers": ["timestamp", "signature", "watermark"],
+        },
+    )
+    assert r_vote1.status_code == 200
+
+    # 3. Emitir voto en blanco
+    r_vote2 = client.post(
+        "/api/votes/cast",
+        json={
+            "document_id": "88776622",
+            "ballot_type": "blank",
+            "selection": {"category": "General"},
+            "security_layers": ["timestamp"],
+        },
+    )
+    assert r_vote2.status_code == 200
+
+    # 4. Consultar métricas del dashboard
+    r_dash = client.get("/api/dashboard")
+    assert r_dash.status_code == 200
+    data = r_dash.json()
+    assert data["total_votes_cast"] >= 2
+    assert "CAND-01" in data["votes_by_candidate_id"]
+    assert data["votes_by_candidate_id"]["CAND-01"] >= 1
+    assert "Gabriel Silva" in data["votes_by_candidate_name"]
+    assert data["votes_by_candidate_name"]["Gabriel Silva"] >= 1
+    assert data["blank_votes"] >= 1
+    assert isinstance(data["candidate_votes"], dict)
 
 
