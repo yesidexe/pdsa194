@@ -1,7 +1,7 @@
 """Módulo para la creación de papeletas de votación desacopladas."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 import uuid
 
@@ -68,7 +68,7 @@ class CandidateBallotCreator(BallotCreator):
     def create_ballot(self, **kwargs) -> CandidateBallot:
         return CandidateBallot(
             ballot_id=str(uuid.uuid4()),
-            issued_at=datetime.utcnow(),
+            issued_at=datetime.now(timezone.utc),
             candidate_id=kwargs["candidate_id"],
             candidate_name=kwargs["candidate_name"],
             party_name=kwargs.get("party_name", "Independiente"),
@@ -81,7 +81,7 @@ class ReferendumBallotCreator(BallotCreator):
     def create_ballot(self, **kwargs) -> ReferendumBallot:
         return ReferendumBallot(
             ballot_id=str(uuid.uuid4()),
-            issued_at=datetime.utcnow(),
+            issued_at=datetime.now(timezone.utc),
             question_code=kwargs["question_code"],
             decision=kwargs["decision"],
         )
@@ -93,6 +93,6 @@ class BlankBallotCreator(BallotCreator):
     def create_ballot(self, **kwargs) -> BlankBallot:
         return BlankBallot(
             ballot_id=str(uuid.uuid4()),
-            issued_at=datetime.utcnow(),
+            issued_at=datetime.now(timezone.utc),
             category=kwargs.get("category", "General"),
         )

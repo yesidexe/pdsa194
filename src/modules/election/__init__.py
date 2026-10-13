@@ -18,6 +18,11 @@ from src.modules.election.station_prototype import (
     VotingStation,
     StationPrototypeRegistry,
 )
+from src.modules.election.jurisdiction_composite import (
+    ElectoralUnit,
+    VotingStationLeaf,
+    ElectoralJurisdictionComposite,
+)
 
 __all__ = [
     "CredentialValidator",
@@ -35,5 +40,7 @@ __all__ = [
     "Prototype",
     "VotingStation",
     "StationPrototypeRegistry",
+    "ElectoralUnit",
+    "VotingStationLeaf",
+    "ElectoralJurisdictionComposite",
 ]
-

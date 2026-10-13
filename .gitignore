@@ -1,6 +1,10 @@
 # Documentación Interna / Notas
 docs/
 
+# Bases de Datos Locales
+*.db
+*.sqlite3
+
 # Python y Entornos Virtuales
 __pycache__/
 *.py[cod]

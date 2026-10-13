@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cabina de Votación Digital | E-Voting Platform</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
+
+    <!-- Encabezado Institucional Oficial (Fijo y Sólido) -->
+    <header class="sticky top-0 z-50 w-full bg-gradient-to-r from-blue-900 to-indigo-950 text-white shadow-md">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-2">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-landmark text-3xl text-amber-400"></i>
+                <div>
+                    <h1 id="headerInstitutionName" class="text-xl font-bold tracking-tight">CONSEJO NACIONAL ELECTORAL</h1>
+                    <p id="headerElectionSubtitle" class="text-xs text-blue-200">Plataforma Oficial de Votación Digital Segura</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="badgeUrna" class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Urna Abierta
+                </span>
+                <a href="/admin" class="text-xs bg-white/10 hover:bg-white/20 transition px-3 py-1.5 rounded-lg border border-white/20 flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-shield"></i> Panel de Escrutinio / Admin
+                </a>
+                <a href="/docs" target="_blank" class="text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 transition px-3 py-1.5 rounded-lg border border-amber-500/30 flex items-center gap-1.5">
+                    <i class="fa-solid fa-code"></i> Swagger API
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <main class="max-w-4xl mx-auto px-4 py-8">
+
+        <!-- PASO 1: Autenticación del Elector -->
+        <section id="stepAuth" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 transition-all">
+            <div class="text-center max-w-lg mx-auto">
+                <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
+                    <i class="fa-solid fa-id-card"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900 mb-2">Identificación del Elector</h2>
+                <p id="authInstructionText" class="text-sm text-slate-500 mb-4">
+                    Ingrese su documento de identidad para verificar su habilitación en el Censo Electoral oficial y ejercer su derecho a voto único.
+                </p>
+                <div class="inline-block mb-6 px-3 py-1 bg-slate-100 border border-slate-200 rounded-full text-xs font-semibold text-slate-600">
+                    <span id="documentTypeBadge">Cédula de Ciudadanía (C.C.)</span>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <input 
+                        type="text" 
+                        id="documentInput" 
+                        placeholder="Ej: 10203040" 
+                        class="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-lg font-medium text-center sm:text-left"
+                    >
+                    <button 
+                        id="btnVerify" 
+                        onclick="verifyVoter()"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-md shadow-blue-600/20 transition flex items-center justify-center gap-2"
+                    >
+                        <span>Verificar Elector</span>
+                        <i class="fa-solid fa-arrow-right text-sm"></i>
+                    </button>
+                </div>
+
+                <div id="authAlert" class="mt-4 hidden p-4 rounded-xl text-sm font-medium"></div>
+            </div>
+        </section>
+
+        <!-- PASO 2: Tarjetón Electoral (Selección de Voto) -->
+        <section id="stepBallot" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 transition-all">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-4 mb-6 gap-2">
+                <div>
+                    <span id="ballotHeaderOfficial" class="text-xs font-semibold uppercase tracking-wider text-blue-600 block">Tarjetón Electoral Oficial</span>
+                    <h2 id="ballotTitleOfficial" class="text-2xl font-bold text-slate-900">Elección Oficial</h2>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs text-slate-400">Elector habilitado:</p>
+                    <p id="voterNameBadge" class="text-sm font-bold text-slate-700"></p>
+                </div>
+            </div>
+
+            <p class="text-sm text-slate-500 mb-6">
+                Seleccione una única opción para emitir su sufragio digital. Su voto será sellado criptográficamente y registrado en la urna de forma completamente anónima.
+            </p>
+
+            <!-- Lista de Candidatos Oficiales -->
+            <div id="candidatesGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <!-- Inyectado dinámicamente -->
+            </div>
+
+            <!-- Voto en Blanco con retroalimentación visual contundente -->
+            <div class="border-t border-slate-100 pt-4">
+                <button 
+                    onclick="selectOption('blank', {category: 'General', candidate_name: 'VOTO EN BLANCO'})"
+                    id="btnBlank"
+                    class="w-full p-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-slate-50 hover:bg-slate-100 transition flex items-center justify-between group"
+                >
+                    <div class="flex items-center gap-3">
+                        <div id="blankBoxIcon" class="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 text-lg group-hover:text-slate-600">
+                            <i class="fa-regular fa-square"></i>
+                        </div>
+                        <div class="text-left">
+                            <h4 class="font-bold text-slate-800 text-base">VOTO EN BLANCO</h4>
+                            <p class="text-xs text-slate-500">Opción formal válida legalmente</p>
+                        </div>
+                    </div>
+                    <span id="blankBadgeText" class="text-xs font-semibold text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+                        Seleccionar
+                    </span>
+                </button>
+            </div>
+
+            <div class="mt-8 flex justify-between items-center border-t border-slate-100 pt-6">
+                <button onclick="cancelVote()" class="text-sm text-slate-500 hover:text-slate-700">
+                    <i class="fa-solid fa-arrow-left mr-1"></i> Cancelar
+                </button>
+                <button 
+                    id="btnConfirmCast" 
+                    disabled 
+                    onclick="castVote()"
+                    class="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-8 py-3 rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center gap-2 text-base"
+                >
+                    <i class="fa-solid fa-check"></i>
+                    <span>Confirmar y Emitir Sufragio</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- PASO 3: Comprobante de Votación (Sello Digital & Recibo) -->
+        <section id="stepReceipt" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 transition-all">
+            <div class="max-w-xl mx-auto text-center">
+                <div class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900 mb-1">¡Sufragio Emitido con Éxito!</h2>
+                <p class="text-sm text-slate-500 mb-6">
+                    Su voto ha sido sellado con capas criptográficas en memoria e ingresado a la urna digital de forma anónima.
+                </p>
+
+                <!-- Certificado Digital Visual -->
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left mb-6 font-mono text-xs space-y-2 relative overflow-hidden shadow-inner">
+                    <div class="absolute right-3 top-3 text-slate-300 text-6xl opacity-20 pointer-events-none">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div class="flex justify-between border-b border-slate-200 pb-2">
+                        <span class="text-slate-400">CERTIFICADO ELECTORAL DIGITAL</span>
+                        <span class="text-emerald-600 font-bold">VERIFICADO SHA-256</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500">Código de Recibo:</span>
+                        <span id="receiptCode" class="text-blue-700 font-bold text-sm block tracking-widest"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500">ID Papeleta Anónima:</span>
+                        <span id="receiptBallotId" class="text-slate-700 block truncate"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500">Sello de Tiempo UTC:</span>
+                        <span id="receiptTimestamp" class="text-slate-700 block"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-500">Firma Digital HMAC-SHA256:</span>
+                        <span id="receiptSignature" class="text-slate-600 block truncate"></span>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button onclick="resetFlow()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-xl transition text-sm">
+                        Nuevo Elector
+                    </button>
+                    <!-- Enlace público a /dashboard SIN opciones de admin -->
+                    <a href="/dashboard" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium px-6 py-2.5 rounded-xl transition text-sm flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-chart-line"></i> Ver Resultados en Vivo
+                    </a>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Script de Interacción Frontend -->
+    <script>
+        let currentVoter = null;
+        let selectedVote = null;
+        let activeElectionMode = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadElectionMode();
+            loadCandidates();
+            checkUrnaStatus();
+        });
+
+        async function loadElectionMode() {
+            try {
+                const res = await fetch('/api/election/mode');
+                const data = await res.json();
+                activeElectionMode = data;
+
+                document.getElementById('headerInstitutionName').innerText = data.institution_name;
+                document.getElementById('headerElectionSubtitle').innerText = data.election_title;
+                document.getElementById('documentTypeBadge').innerText = data.document_type;
+                document.getElementById('ballotTitleOfficial').innerText = data.election_title;
+                document.getElementById('ballotHeaderOfficial').innerText = data.ballot_header;
+
+                // Placeholder adaptativo
+                const docInput = document.getElementById('documentInput');
+                if (data.mode === 'university') {
+                    docInput.placeholder = "Ej: EST-2024 o EST-9012";
+                } else {
+                    docInput.placeholder = "Ej: 10203040 o 50607080";
+                }
+            } catch (err) {
+                console.error("Error al cargar modo electoral:", err);
+            }
+        }
+
+        async function checkUrnaStatus() {
+            try {
+                const res = await fetch('/api/dashboard');
+                const data = await res.json();
+                const badge = document.getElementById('badgeUrna');
+                if (data.is_open) {
+                    badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Urna Abierta`;
+                    badge.className = "px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5";
+                } else {
+                    badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span> Urna Cerrada`;
+                    badge.className = "px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1.5";
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function loadCandidates() {
+            try {
+                const res = await fetch('/api/candidates');
+                const candidates = await res.json();
+                const grid = document.getElementById('candidatesGrid');
+                grid.innerHTML = '';
+
+                candidates.forEach(c => {
+                    const card = document.createElement('div');
+                    card.className = "p-4 rounded-xl border-2 border-slate-200 hover:border-blue-500 bg-white transition cursor-pointer flex flex-col justify-between candidate-card";
+                    card.id = `cand-${c.candidate_id}`;
+                    card.onclick = () => selectOption('candidate', {
+                        candidate_id: c.candidate_id,
+                        candidate_name: c.candidate_name,
+                        party_name: c.party_name
+                    }, `cand-${c.candidate_id}`);
+
+                    card.innerHTML = `
+                        <div class="flex items-start gap-3">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm" style="background-color: ${c.color}">
+                                ${c.candidate_name.charAt(0)}
+                            </div>
+                            <div class="flex-1">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">${c.party_name}</span>
+                                <h3 class="font-bold text-slate-900 text-base leading-snug">${c.candidate_name}</h3>
+                                <p class="text-xs text-slate-500 mt-1 italic">"${c.slogan}"</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
+                            <span class="text-slate-400 font-mono">ID: ${c.candidate_id}</span>
+                            <span class="select-badge text-blue-600 font-semibold hidden"><i class="fa-solid fa-check-circle"></i> Seleccionado</span>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function verifyVoter() {
+            const doc = document.getElementById('documentInput').value.trim();
+            const alertBox = document.getElementById('authAlert');
+            alertBox.classList.add('hidden');
+
+            if (!doc) {
+                alertBox.className = "mt-4 p-4 rounded-xl text-sm font-medium bg-amber-50 text-amber-800 border border-amber-200";
+                alertBox.innerText = "Por favor ingrese su documento de identificación.";
+                alertBox.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/auth/verify', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({document_id: doc})
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    alertBox.className = "mt-4 p-4 rounded-xl text-sm font-medium bg-rose-50 text-rose-800 border border-rose-200";
+                    alertBox.innerText = data.detail || "No habilitado para sufragar en esta jornada.";
+                    alertBox.classList.remove('hidden');
+                    return;
+                }
+
+                currentVoter = data;
+                document.getElementById('voterNameBadge').innerText = `${data.full_name} (${data.assigned_station})`;
+
+                // Transición al tarjetón
+                document.getElementById('stepAuth').classList.add('hidden');
+                document.getElementById('stepBallot').classList.remove('hidden');
+
+            } catch (err) {
+                alertBox.className = "mt-4 p-4 rounded-xl text-sm font-medium bg-rose-50 text-rose-800 border border-rose-200";
+                alertBox.innerText = "Error de comunicación con el sistema electoral.";
+                alertBox.classList.remove('hidden');
+            }
+        }
+
+        function selectOption(type, payload, elementId = null) {
+            selectedVote = { type, payload };
+
+            // Reset estilos de candidatos
+            document.querySelectorAll('.candidate-card').forEach(el => {
+                el.classList.remove('border-blue-600', 'bg-blue-50/40', 'ring-2', 'ring-blue-600');
+                el.querySelector('.select-badge').classList.add('hidden');
+            });
+
+            const btnBlank = document.getElementById('btnBlank');
+            const blankIcon = document.getElementById('blankBoxIcon');
+            const blankBadge = document.getElementById('blankBadgeText');
+
+            if (elementId) {
+                // Candidato seleccionado
+                const el = document.getElementById(elementId);
+                el.classList.add('border-blue-600', 'bg-blue-50/40', 'ring-2', 'ring-blue-600');
+                el.querySelector('.select-badge').classList.remove('hidden');
+
+                // Reset Voto en Blanco
+                btnBlank.className = "w-full p-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-slate-50 hover:bg-slate-100 transition flex items-center justify-between group";
+                blankIcon.innerHTML = `<i class="fa-regular fa-square"></i>`;
+                blankIcon.className = "w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400 text-lg group-hover:text-slate-600";
+                blankBadge.className = "text-xs font-semibold text-slate-500 bg-white px-3 py-1.5 rounded-lg border border-slate-200";
+                blankBadge.innerText = "Seleccionar";
+            } else {
+                // VOTO EN BLANCO SELECCIONADO (Retroalimentación visual de alto contraste)
+                btnBlank.className = "w-full p-4 rounded-xl border-2 border-slate-900 border-solid ring-2 ring-slate-900 bg-slate-100 shadow-md transition flex items-center justify-between";
+                blankIcon.innerHTML = `<i class="fa-solid fa-square-check text-slate-900 text-xl"></i>`;
+                blankIcon.className = "w-10 h-10 rounded-lg bg-white border border-slate-900 flex items-center justify-center text-slate-900 text-lg shadow-sm";
+                blankBadge.className = "bg-slate-900 text-white font-bold text-xs px-3.5 py-1.5 rounded-lg shadow flex items-center gap-1.5";
+                blankBadge.innerHTML = `<i class="fa-solid fa-check"></i> Seleccionado`;
+            }
+
+            document.getElementById('btnConfirmCast').disabled = false;
+        }
+
+        async function castVote() {
+            if (!selectedVote || !currentVoter) return;
+
+            const confirmBtn = document.getElementById('btnConfirmCast');
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Sellando Voto...`;
+
+            try {
+                const res = await fetch('/api/votes/cast', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        document_id: currentVoter.document_id,
+                        ballot_type: selectedVote.type,
+                        selection: selectedVote.payload,
+                        security_layers: ["timestamp", "signature", "watermark"]
+                    })
+                });
+
+                const data = await res.json();
+
+                if (!res.ok) {
+                    alert(data.detail || "Error al procesar el sufragio.");
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = `<i class="fa-solid fa-check"></i> Confirmar y Emitir Sufragio`;
+                    return;
+                }
+
+                // Mostrar Comprobante Digital
+                document.getElementById('receiptCode').innerText = data.receipt_code;
+                document.getElementById('receiptBallotId').innerText = data.ballot_id;
+                document.getElementById('receiptTimestamp').innerText = data.timestamp_seal || data.issued_at;
+                document.getElementById('receiptSignature').innerText = data.digital_signature || 'N/A';
+
+                document.getElementById('stepBallot').classList.add('hidden');
+                document.getElementById('stepReceipt').classList.remove('hidden');
+
+            } catch (err) {
+                alert("Error de conexión al emitir el voto.");
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = `<i class="fa-solid fa-check"></i> Confirmar y Emitir Sufragio`;
+            }
+        }
+
+        function cancelVote() {
+            currentVoter = null;
+            selectedVote = null;
+            document.getElementById('stepBallot').classList.add('hidden');
+            document.getElementById('stepAuth').classList.remove('hidden');
+            document.getElementById('documentInput').value = '';
+        }
+
+        function resetFlow() {
+            currentVoter = null;
+            selectedVote = null;
+            document.getElementById('stepReceipt').classList.add('hidden');
+            document.getElementById('stepAuth').classList.remove('hidden');
+            document.getElementById('documentInput').value = '';
+            document.getElementById('btnConfirmCast').disabled = true;
+            loadElectionMode();
+            loadCandidates();
+            checkUrnaStatus();
+        }
+    </script>
+</body>
+</html>

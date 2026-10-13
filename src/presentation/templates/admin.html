@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administrativo y de Jurados | E-Voting Platform</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
+
+    <!-- Encabezado Fijo y Sólido -->
+    <header class="sticky top-0 z-50 w-full bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-2">
+            <div class="flex items-center gap-3">
+                <i class="fa-solid fa-user-shield text-3xl text-indigo-400"></i>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">PANEL DE CONTROL ELECTORAL Y JURADOS</h1>
+                    <p id="adminSubheader" class="text-xs text-slate-300">Gestión de Urnas • Control de Censo • Escrutinio y Seguridad Electoral</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="/" class="text-xs bg-white/10 hover:bg-white/20 transition px-3 py-1.5 rounded-lg border border-white/20 flex items-center gap-1.5">
+                    <i class="fa-solid fa-person-booth"></i> Ir a Cabina
+                </a>
+                <a href="/dashboard" class="text-xs bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 transition px-3 py-1.5 rounded-lg border border-emerald-500/30 flex items-center gap-1.5">
+                    <i class="fa-solid fa-chart-line"></i> Ver Resultados Públicos
+                </a>
+                <a href="/docs" target="_blank" class="text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 transition px-3 py-1.5 rounded-lg border border-amber-500/30 flex items-center gap-1.5">
+                    <i class="fa-solid fa-code"></i> Swagger API
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8 space-y-6">
+
+        <!-- 1. SECCIÓN: CONMUTACIÓN DE MODALIDAD ELECTORAL -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-4 gap-2">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Configuración de Jornada</span>
+                    <h2 class="text-xl font-bold text-slate-900">Modalidad Electoral Activa</h2>
+                    <p class="text-xs text-slate-400">
+                        Seleccione el tipo de elección para adaptar las reglas de validación, tarjetones y requisitos de escrutinio.
+                    </p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-slate-400">Modo Activo:</span>
+                    <span id="badgeCurrentMode" class="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        Cargando...
+                    </span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <!-- Tarjeta 1: Elección Nacional -->
+                <div id="cardModeNational" class="p-5 rounded-xl border-2 border-slate-200 hover:border-blue-500 transition space-y-3 bg-slate-50/50">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] font-bold text-blue-600 uppercase tracking-wider bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Elección Ciudadana</span>
+                            <h3 class="text-base font-bold text-slate-900 mt-1">Elección Nacional (CNE)</h3>
+                            <p class="text-xs text-slate-500">Representantes a la Cámara 2026</p>
+                        </div>
+                        <i class="fa-solid fa-flag text-2xl text-blue-500"></i>
+                    </div>
+                    <ul class="text-xs text-slate-600 space-y-1 bg-white p-3 rounded-lg border border-slate-100 font-mono">
+                        <li>• <b>Documento:</b> Cédula de Ciudadanía numérico (6-10 dígitos)</li>
+                        <li>• <b>Membrete:</b> REPÚBLICA DE COLOMBIA - CNE</li>
+                        <li>• <b>Escrutinio:</b> Mayoría Absoluta (>50% o Balotaje)</li>
+                    </ul>
+                    <button 
+                        onclick="switchElectionMode('national')"
+                        id="btnSwitchNational"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs shadow-sm transition flex items-center justify-center gap-2"
+                    >
+                        <i class="fa-solid fa-check"></i> Activar Modo Nacional
+                    </button>
+                </div>
+
+                <!-- Tarjeta 2: Elecciones Universitarias -->
+                <div id="cardModeUniversity" class="p-5 rounded-xl border-2 border-slate-200 hover:border-emerald-500 transition space-y-3 bg-slate-50/50">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] font-bold text-emerald-600 uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">Elección Académica</span>
+                            <h3 class="text-base font-bold text-slate-900 mt-1">Elección Universitaria / Voceros (UDI)</h3>
+                            <p class="text-xs text-slate-500">Consejo Superior Universitario 2026</p>
+                        </div>
+                        <i class="fa-solid fa-graduation-cap text-2xl text-emerald-500"></i>
+                    </div>
+                    <ul class="text-xs text-slate-600 space-y-1 bg-white p-3 rounded-lg border border-slate-100 font-mono">
+                        <li>• <b>Documento:</b> Carnet Estudiantil alfanumérico (ej: EST-2024)</li>
+                        <li>• <b>Membrete:</b> UNIVERSIDAD DE INVESTIGACIÓN Y DESARROLLO - UDI</li>
+                        <li>• <b>Escrutinio:</b> Mayoría Simple (Pluralidad)</li>
+                    </ul>
+                    <button 
+                        onclick="switchElectionMode('university')"
+                        id="btnSwitchUniversity"
+                        class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs shadow-sm transition flex items-center justify-center gap-2"
+                    >
+                        <i class="fa-solid fa-check"></i> Activar Modo Universitario
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. SECCIÓN: CONTROL DE URNA Y GENERACIÓN DE ACTA -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- Control de Urna -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                <div class="border-b border-slate-100 pb-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-amber-600">Control Operativo</span>
+                    <h2 class="text-lg font-bold text-slate-900">Control de Urna</h2>
+                    <p class="text-xs text-slate-400">Apertura y cierre formal de la jornada electoral para la mesa de votación.</p>
+                </div>
+
+                <div class="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <div>
+                        <p class="text-xs text-slate-400 font-medium">Estado de Urna:</p>
+                        <h4 id="adminUrnaStatusText" class="text-lg font-bold text-slate-800">Cargando...</h4>
+                    </div>
+                    <button 
+                        id="btnToggleUrna"
+                        onclick="toggleUrna()"
+                        class="bg-slate-900 hover:bg-slate-800 text-white font-semibold py-2 px-5 rounded-xl text-xs transition shadow-sm flex items-center gap-2"
+                    >
+                        <i class="fa-solid fa-power-off"></i> Alternar Estado
+                    </button>
+                </div>
+                <p class="text-[11px] text-slate-400 italic">
+                    * El sistema de control de acceso exige credenciales activas con perfil de Administrador Electoral.
+                </p>
+            </div>
+
+            <!-- Escrutinio y Cierre con Acta Oficial -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                <div class="border-b border-slate-100 pb-3">
+                    <span class="text-xs font-bold uppercase tracking-wider text-rose-600">Consolidación Oficial</span>
+                    <h2 class="text-lg font-bold text-slate-900">Cierre Definitivo de Escrutinio</h2>
+                    <p class="text-xs text-slate-400">Totaliza votos, evalúa regla de ganador y construye el Acta sellada con SHA-256.</p>
+                </div>
+
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                    <p class="text-xs text-slate-600">
+                        Al presionar este botón, se cierra formalmente la urna y se genera el acta oficial inmutable de escrutinio con firma digital.
+                    </p>
+                    <button 
+                        onclick="generateOfficialTally()"
+                        class="w-full bg-rose-600 hover:bg-rose-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs shadow-sm shadow-rose-600/20 transition flex items-center justify-center gap-2"
+                    >
+                        <i class="fa-solid fa-file-signature"></i> Cerrar Urna y Generar Acta Oficial
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 3. MODAL / RECUADRO DE ACTA OFICIAL (Se muestra al emitir acta) -->
+        <div id="tallyReportContainer" class="hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-stamp text-xl text-blue-600"></i>
+                    <h3 class="text-base font-bold text-slate-900">Acta Oficial de Escrutinio y Cierre</h3>
+                </div>
+                <button onclick="document.getElementById('tallyReportContainer').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 text-sm">
+                    <i class="fa-solid fa-xmark"></i> Cerrar
+                </button>
+            </div>
+
+            <pre id="tallyFormattedSummary" class="bg-slate-900 text-emerald-400 p-4 rounded-xl text-xs font-mono overflow-x-auto whitespace-pre-wrap leading-relaxed shadow-inner"></pre>
+        </div>
+
+        <!-- 4. SECCIÓN: CENSO ELECTORAL Y REGISTRO CIUDADANO (BASE DE DATOS SQLITE) -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-4 gap-2">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-teal-600">Registraduría / Censo Electoral</span>
+                    <h2 class="text-xl font-bold text-slate-900">Administración de Electores Registrados</h2>
+                    <p class="text-xs text-slate-400">
+                        Gestión en tiempo real del censo oficial persistido en la base de datos relacional del sistema.
+                    </p>
+                </div>
+                <button onclick="loadCensusVoters()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-medium">
+                    <i class="fa-solid fa-arrows-rotate"></i> Actualizar Censo
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Formulario de Inscripción -->
+                <div class="lg:col-span-1 bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-user-plus text-indigo-600"></i> Inscribir o Actualizar Ciudadano
+                    </h3>
+                    <form id="formRegisterVoter" onsubmit="handleRegisterVoter(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Documento / Cédula / Carnet</label>
+                            <input 
+                                type="text" 
+                                id="censusDocId" 
+                                required 
+                                placeholder="Ej: 10998877 o EST-4455"
+                                class="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Nombre Completo</label>
+                            <input 
+                                type="text" 
+                                id="censusFullName" 
+                                required 
+                                placeholder="Ej: Marcela Gómez"
+                                class="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Mesa Asignada</label>
+                            <input 
+                                type="text" 
+                                id="censusStation" 
+                                value="MESA-01" 
+                                required
+                                class="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Estado Legal Inicial</label>
+                            <select 
+                                id="censusEligible" 
+                                class="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                            >
+                                <option value="true">Habilitado para Sufragar</option>
+                                <option value="false">Inhabilitado / Sancionado</option>
+                            </select>
+                        </div>
+                        <button 
+                            type="submit" 
+                            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs shadow-sm transition flex items-center justify-center gap-2"
+                        >
+                            <i class="fa-solid fa-floppy-disk"></i> Guardar en Censo Oficial
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Tabla de Votantes en Vivo -->
+                <div class="lg:col-span-2 overflow-x-auto">
+                    <table class="w-full text-left text-xs border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-slate-400 font-semibold bg-slate-50">
+                                <th class="py-2.5 px-3">Documento</th>
+                                <th class="py-2.5 px-3">Nombre Legal</th>
+                                <th class="py-2.5 px-3">Mesa</th>
+                                <th class="py-2.5 px-3">Estado</th>
+                                <th class="py-2.5 px-3 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="censusTableBody" class="divide-y divide-slate-100">
+                            <tr>
+                                <td colspan="5" class="text-center py-6 text-slate-400">Cargando electores del censo...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. SECCIÓN: BITÁCORA DE AUDITORÍA -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Seguridad & Trazabilidad</span>
+                    <h2 class="text-lg font-bold text-slate-900">Bitácora de Auditoría Electoral</h2>
+                    <p class="text-xs text-slate-400">Registro cronológico de accesos, validaciones e intervenciones en la plataforma.</p>
+                </div>
+                <button onclick="loadAuditLogs()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-slate-400 font-semibold bg-slate-50">
+                            <th class="py-2.5 px-3">Hora UTC</th>
+                            <th class="py-2.5 px-3">Acción</th>
+                            <th class="py-2.5 px-3">Usuario</th>
+                            <th class="py-2.5 px-3">Rol</th>
+                            <th class="py-2.5 px-3">Estado</th>
+                            <th class="py-2.5 px-3">Detalles</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditTableBody" class="divide-y divide-slate-100 font-mono">
+                        <tr>
+                            <td colspan="6" class="text-center py-6 text-slate-400">Cargando eventos de auditoría...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Script de Administración -->
+    <script>
+        let isUrnaOpen = false;
+        let currentMode = "national";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadElectionMode();
+            loadAuditLogs();
+        });
+
+        async function loadElectionMode() {
+            try {
+                const res = await fetch('/api/election/mode');
+                const data = await res.json();
+                currentMode = data.mode;
+                isUrnaOpen = data.is_open;
+
+                document.getElementById('adminSubheader').innerText = `${data.institution_name} • ${data.election_title}`;
+                const badgeMode = document.getElementById('badgeCurrentMode');
+                badgeMode.innerText = data.mode.toUpperCase() + ` (${data.document_type})`;
+
+                const statusEl = document.getElementById('adminUrnaStatusText');
+                if (data.is_open) {
+                    statusEl.innerText = "Abierta (Permite Votar)";
+                    statusEl.className = "text-lg font-bold text-emerald-600";
+                } else {
+                    statusEl.innerText = "Cerrada (Bloqueada)";
+                    statusEl.className = "text-lg font-bold text-rose-600";
+                }
+
+                // Resaltar tarjeta seleccionada
+                const cardNat = document.getElementById('cardModeNational');
+                const cardUni = document.getElementById('cardModeUniversity');
+                if (data.mode === 'university') {
+                    cardUni.classList.add('ring-2', 'ring-emerald-500', 'border-emerald-500', 'bg-emerald-50/20');
+                    cardNat.classList.remove('ring-2', 'ring-blue-500', 'border-blue-500', 'bg-blue-50/20');
+                } else {
+                    cardNat.classList.add('ring-2', 'ring-blue-500', 'border-blue-500', 'bg-blue-50/20');
+                    cardUni.classList.remove('ring-2', 'ring-emerald-500', 'border-emerald-500', 'bg-emerald-50/20');
+                }
+
+                loadCensusVoters();
+            } catch (err) {
+                console.error("Error al cargar modo:", err);
+            }
+        }
+
+        async function switchElectionMode(newMode) {
+            if (newMode === currentMode) {
+                alert(`El modo ${newMode.toUpperCase()} ya está activo.`);
+                return;
+            }
+
+            if (!confirm(`¿Desea cambiar la elección a modo ${newMode.toUpperCase()}? Se reiniciará el estado de la urna y se cargarán los candidatos y censo de esa modalidad.`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/election/switch-mode', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        mode: newMode,
+                        user_id: 'ADMIN-01',
+                        session_token: 'TOKEN-ADMIN-MASTER-2026'
+                    })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    alert(`¡Modo electoral actualizado exitosamente a: ${data.election_title}!`);
+                    loadElectionMode();
+                    loadAuditLogs();
+                } else {
+                    alert(data.detail || "Error al conmutar modo electoral.");
+                }
+            } catch (err) {
+                alert("Error de conexión al cambiar modo.");
+            }
+        }
+
+        async function toggleUrna() {
+            const endpoint = isUrnaOpen ? '/api/election/close' : '/api/election/open';
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        user_id: 'ADMIN-01',
+                        session_token: 'TOKEN-ADMIN-MASTER-2026'
+                    })
+                });
+
+                if (res.ok) {
+                    loadElectionMode();
+                    loadAuditLogs();
+                } else {
+                    const err = await res.json();
+                    alert(err.detail || "Error al alterar estado de urna.");
+                }
+            } catch (err) {
+                alert("Error de conexión con el servidor.");
+            }
+        }
+
+        async function generateOfficialTally() {
+            if (!confirm("¿Está seguro de cerrar definitivamente la urna y consolidar el Acta Oficial con firma criptográfica?")) {
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/tally/generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        officer_signatures: ["JURADO-PRESIDENTE-TOKEN-991", "JURADO-VOCAL-TOKEN-882"],
+                        user_id: "ADMIN-01",
+                        session_token: "TOKEN-ADMIN-MASTER-2026"
+                    })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    const container = document.getElementById('tallyReportContainer');
+                    const pre = document.getElementById('tallyFormattedSummary');
+                    pre.innerText = data.formatted_summary;
+                    container.classList.remove('hidden');
+                    container.scrollIntoView({ behavior: 'smooth' });
+                    loadElectionMode();
+                    loadAuditLogs();
+                } else {
+                    alert(data.detail || "Error al generar acta oficial.");
+                }
+            } catch (err) {
+                alert("Error de conexión al generar acta.");
+            }
+        }
+
+        async function loadCensusVoters() {
+            try {
+                const res = await fetch(`/api/census/voters?election_type=${currentMode}`);
+                const voters = await res.json();
+                const tbody = document.getElementById('censusTableBody');
+
+                if (!voters || voters.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">No hay electores registrados en este censo.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = voters.map(v => {
+                    const badgeClass = v.is_eligible 
+                        ? 'text-emerald-700 bg-emerald-50 border border-emerald-200' 
+                        : 'text-rose-700 bg-rose-50 border border-rose-200';
+                    const badgeText = v.is_eligible ? 'Habilitado' : 'Inhabilitado';
+                    const btnClass = v.is_eligible 
+                        ? 'text-rose-600 hover:bg-rose-50 border-rose-200' 
+                        : 'text-emerald-600 hover:bg-emerald-50 border-emerald-200';
+                    const btnText = v.is_eligible ? 'Inhabilitar' : 'Habilitar';
+                    const targetStatus = !v.is_eligible;
+
+                    return `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="py-2.5 px-3 font-mono font-semibold text-slate-900">${v.document_id}</td>
+                            <td class="py-2.5 px-3 text-slate-700">${v.full_name}</td>
+                            <td class="py-2.5 px-3 text-slate-500">${v.assigned_station_id}</td>
+                            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${badgeText}</span></td>
+                            <td class="py-2.5 px-3 text-right">
+                                <button 
+                                    onclick="toggleVoterStatus('${v.document_id}', ${targetStatus})"
+                                    class="text-[11px] font-semibold border px-2.5 py-1 rounded-lg transition ${btnClass}"
+                                >
+                                    ${btnText}
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error("Error al cargar censo:", err);
+            }
+        }
+
+        async function handleRegisterVoter(e) {
+            e.preventDefault();
+            const docId = document.getElementById('censusDocId').value.trim();
+            const fullName = document.getElementById('censusFullName').value.trim();
+            const station = document.getElementById('censusStation').value.trim();
+            const eligible = document.getElementById('censusEligible').value === 'true';
+
+            try {
+                const res = await fetch('/api/census/voters', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        document_id: docId,
+                        full_name: fullName,
+                        assigned_station_id: station,
+                        is_eligible: eligible,
+                        election_type: currentMode.toUpperCase(),
+                        user_id: 'ADMIN-01',
+                        session_token: 'TOKEN-ADMIN-MASTER-2026'
+                    })
+                });
+
+                if (res.ok) {
+                    alert(`¡Elector ${fullName} (${docId}) registrado exitosamente en el censo oficial!`);
+                    document.getElementById('censusDocId').value = '';
+                    document.getElementById('censusFullName').value = '';
+                    loadCensusVoters();
+                    loadAuditLogs();
+                } else {
+                    const err = await res.json();
+                    alert(err.detail || "Error al inscribir elector.");
+                }
+            } catch (err) {
+                alert("Error de conexión al inscribir elector.");
+            }
+        }
+
+        async function toggleVoterStatus(docId, newStatus) {
+            try {
+                const res = await fetch(`/api/census/voters/${docId}/status`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        is_eligible: newStatus,
+                        user_id: 'ADMIN-01',
+                        session_token: 'TOKEN-ADMIN-MASTER-2026'
+                    })
+                });
+
+                if (res.ok) {
+                    loadCensusVoters();
+                    loadAuditLogs();
+                } else {
+                    const err = await res.json();
+                    alert(err.detail || "Error al modificar estado.");
+                }
+            } catch (err) {
+                alert("Error de conexión al modificar estado.");
+            }
+        }
+
+        async function loadAuditLogs() {
+            try {
+                const res = await fetch('/api/security/audit-log');
+                const logs = await res.json();
+                const tbody = document.getElementById('auditTableBody');
+
+                if (!logs || logs.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">Sin eventos auditados aún.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = logs.slice().reverse().map(l => {
+                    const badgeColor = l.status === 'AUTORIZADO' || l.status === 'EXITOSO' || l.status === 'CONCLUIDO' 
+                        ? 'text-emerald-700 bg-emerald-50 border border-emerald-200' 
+                        : (l.status === 'RECHAZADO' || l.status === 'FALLIDO' ? 'text-rose-700 bg-rose-50 border border-rose-200' : 'text-blue-700 bg-blue-50 border border-blue-200');
+
+                    return `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="py-2.5 px-3 text-slate-400">${l.timestamp.split('T')[1].slice(0, 8)}</td>
+                            <td class="py-2.5 px-3 font-semibold text-slate-800">${l.action}</td>
+                            <td class="py-2.5 px-3">${l.user_id}</td>
+                            <td class="py-2.5 px-3 text-slate-500">${l.role}</td>
+                            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeColor}">${l.status}</span></td>
+                            <td class="py-2.5 px-3 text-slate-500 truncate max-w-xs" title="${l.details}">${l.details}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error("Error al cargar auditoría:", err);
+            }
+        }
+    </script>
+</body>
+</html>

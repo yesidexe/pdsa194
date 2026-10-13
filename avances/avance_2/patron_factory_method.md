@@ -20,7 +20,66 @@ El patrón **Factory Method** resuelve este problema definiendo una interfaz com
 
 ---
 
-## 3. Implementación Técnica en el Código
+## 3. Modelo Estructural y Diagrama de Clases (UML)
+
+El siguiente diagrama modela la separación entre la jerarquía de los productos abstractos y concretos (`Ballot`) y la jerarquía de los creadores (`BallotCreator`), mostrando cómo cada fábrica concreta produce su correspondiente tipo de papeleta respetando el principio Open/Closed (OCP):
+
+```mermaid
+classDiagram
+    direction TB
+
+    %% Jerarquía del Producto
+    class Ballot {
+        <<abstract>>
+        +str ballot_id
+        +datetime issued_at
+        +get_selection()* str
+    }
+    class CandidateBallot {
+        +str candidate_id
+        +str candidate_name
+        +str party_name
+        +get_selection() str
+    }
+    class ReferendumBallot {
+        +str question_code
+        +str decision
+        +get_selection() str
+    }
+    class BlankBallot {
+        +str category
+        +get_selection() str
+    }
+    Ballot <|-- CandidateBallot
+    Ballot <|-- ReferendumBallot
+    Ballot <|-- BlankBallot
+
+    %% Jerarquía del Creador
+    class BallotCreator {
+        <<abstract>>
+        +create_ballot(**kwargs)* Ballot
+        +issue_ballot(**kwargs) Ballot
+    }
+    class CandidateBallotCreator {
+        +create_ballot(**kwargs) CandidateBallot
+    }
+    class ReferendumBallotCreator {
+        +create_ballot(**kwargs) ReferendumBallot
+    }
+    class BlankBallotCreator {
+        +create_ballot(**kwargs) BlankBallot
+    }
+    BallotCreator <|-- CandidateBallotCreator
+    BallotCreator <|-- ReferendumBallotCreator
+    BallotCreator <|-- BlankBallotCreator
+
+    %% Relación de dependencia de creación
+    BallotCreator ..> Ballot : produce
+```
+
+---
+
+## 4. Implementación Técnica en el Código
 
 La implementación separa rigurosamente la jerarquía del **Producto** (`Ballot`) de la jerarquía del **Creador** (`BallotCreator`).
 
@@ -118,7 +177,7 @@ class BlankBallotCreator(BallotCreator):
 
 ---
 
-## 4. Análisis de Ingeniería de Software
+## 5. Análisis de Ingeniería de Software
 
 ### 4.1 Principio Abierto/Cerrado (OCP)
 El sistema queda **abierto a la extensión pero cerrado a la modificación**: si el día de mañana la normativa electoral exige un nuevo tipo de tarjetón (ej. voto para consulta indígena), solo se crean dos clases: `IndigenousBallot` y `IndigenousBallotCreator`. No se modifica ni una sola línea del código existente.

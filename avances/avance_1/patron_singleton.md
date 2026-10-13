@@ -20,7 +20,33 @@ El patrón **Singleton** garantiza la existencia de **una única instancia globa
 
 ---
 
-## 3. Implementación Técnica en el Código
+## 3. Modelo Estructural y Diagrama de Clases (UML)
+
+El siguiente diagrama modela la estructura de la clase `ElectoralConfigManager`, destacando los miembros estáticos encargados de controlar la unicidad de instancia (`_instance`), la sincronización en ambientes multihilo (`_lock`) y la prevención de sobreescritura accidental (`_initialized`), así como sus operaciones públicas de control:
+
+```mermaid
+classDiagram
+    direction TB
+    class ElectoralConfigManager {
+        -ElectoralConfigManager _instance$
+        -Lock _lock$
+        -bool _initialized$
+        +str institution_name
+        +str election_title
+        +int max_votes_per_citizen
+        -_bool _is_open
+        +__new__(*args, **kwargs)$ ElectoralConfigManager
+        +__init__(institution_name, election_title, max_votes_per_citizen) void
+        +is_open() bool
+        +open_voting() void
+        +close_voting() void
+        +reset_for_testing()$ void
+    }
+```
+
+---
+
+## 4. Implementación Técnica en el Código
 
 En Python, el control de la instanciación única se implementa interceptando el método especial `__new__`, garantizando además la concurrencia mediante cerrojos de sincronización (`threading.Lock`).
 
@@ -81,7 +107,7 @@ class ElectoralConfigManager:
 
 ---
 
-## 4. Análisis de Ingeniería de Software
+## 5. Análisis de Ingeniería de Software
 
 ### 4.1 Seguridad en Hilos (*Thread-Safety*)
 Se implementó la técnica de comprobación con doble bloqueo (*Double-Checked Locking*):

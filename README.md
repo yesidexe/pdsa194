@@ -238,7 +238,7 @@ classDiagram
 
 ## 4. Avances del Proyecto
 
-La documentación completa con los 5 avances hasta la fecha, y en formato docx, para netamente fines académicos estará disponible en la carpeta avances o [dando click acá](<avances/doc_completa.docx>)
+La documentación completa de los avances del proyecto (abarcando los 5 patrones Creacionales y los 7 patrones Estructurales del catálogo GoF) se encuentra detallada en la carpeta `avances/` y enlazada a continuación:
 
 ### 4.1 Avance 1: Implementación del Patrón Singleton
 * **Módulo:** `src/core/config.py` (`ElectoralConfigManager`).
@@ -265,13 +265,90 @@ La documentación completa con los 5 avances hasta la fecha, y en formato docx, 
 * **Resumen:** Se formalizó la clonación y replicación rápida de mesas y estaciones de votación a partir de plantillas operativas preconfiguradas. Se implementó copia profunda (*deep copy*) para asegurar el aislamiento de colecciones mutables (jurados y tarjetones autorizados) y personalización segura de terminales.
 * **Documentación:** [Lectura en línea (Markdown)](avances/avance_5/patron_prototype.md) | [Descargar documento oficial (.docx)](<avances/avance_5/Avance Patrón de Diseño Prototype.docx>)
 
+### 4.6 Avance 6: Implementación de los Patrones Adapter y Bridge
+* **Módulos:** `src/modules/census/census_adapter.py` (`ICensusRegistry`, `JsonCensusAdapter`, `CsvCensusAdapter`) y `src/modules/transmission/bulletin_bridge.py` (`ElectoralBulletin`, `ITransmissionChannel`).
+* **Resumen:** Se implementó el patrón **Adapter** para homogeneizar censos electorales de fuentes heterogéneas (archivos planos CSV de Registraduría vs exportaciones JSON institucionales) hacia el modelo canónico del dominio. En paralelo, se implementó el patrón **Bridge** para desacoplar los tipos de boletines y alertas electorales de sus canales físicos de transporte (consola oficial, archivo persistente sellado y sink de auditoría en memoria), evitando la explosión combinatoria multidimensional.
+* **Documentación:** [Lectura en línea (Markdown)](avances/avance_6/patron_adapter_bridge.md)
+
+### 4.7 Avance 7: Implementación de los Patrones Composite, Decorator y Facade
+* **Módulos:** `src/modules/election/jurisdiction_composite.py` (`ElectoralUnit`, `VotingStationLeaf`, `ElectoralJurisdictionComposite`), `src/modules/voting/ballot_decorator.py` (`BallotSecurityDecorator`, `TimestampSecurityDecorator`, `DigitalSignatureDecorator`, `AuditWatermarkDecorator`), y `src/modules/facade/voting_facade.py` (`VotingSystemFacade`).
+* **Resumen:** Se implementó el patrón **Composite** para estructurar jerárquicamente el censo y mesas de votación (País -> Departamento/Puesto -> Mesa) tratando unidades individuales y agrupaciones de forma uniforme. Se implementó el patrón **Decorator** (profundización) para envolver dinámicamente las papeletas con capas de seguridad acumulativas (sello de tiempo ISO-8601, firma criptográfica HMAC-SHA256 y marca de agua de auditoría) sin alterar la clase base `Ballot`. Finalmente, se integró el patrón **Facade** como punto de entrada unificado que coordina todos los subsistemas creacionales y estructurales de cara a la interfaz web y la API REST.
+* **Documentación:** [Lectura en línea (Markdown)](avances/avance_7/patron_composite_decorator_facade.md)
+
+### 4.8 Avance 8: Implementación de los Patrones Proxy y Flyweight
+* **Módulos:** `src/modules/security/access_proxy.py` (`ElectoralAccessProxy`, `UserSession`, `UserRole`) y `src/modules/voting/candidate_flyweight.py` (`CandidateMetadataFlyweight`, `CandidateFlyweightFactory`).
+* **Resumen:** Se implementó el patrón **Proxy** como sustituto protector que intercepta operaciones críticas del sistema electoral (apertura/cierre de urnas y emisión de votos) validando credenciales y roles (`ADMINISTRADOR`, `JURADO`, `AUDITOR`), además de registrar una bitácora inmutable de auditoría forense. En paralelo, se implementó el patrón **Flyweight** para compartir metadatos intrínsecos inmutables de los candidatos en memoria RAM, evitando duplicar texto y datos pesados al escalar a cientos de miles de sufragios. Con esto se completaron los **7 patrones estructurales** del catálogo GoF.
+* **Documentación:** [Lectura en línea (Markdown)](avances/avance_8/patron_proxy_flyweight.md)
+
 ---
 
-## 5. Próximos Pasos
+## 5. Instrucciones de Ejecución y Pruebas del Sistema
 
-Con el núcleo del dominio y los patrones creacionales formalizados, los siguientes avances se enfocarán en dar vida visual e interactiva al prototipo mediante la incorporación de la interfaz de usuario y la capa de servicios web.
+### 5.1 Requisitos Previos
+* **Python 3.11 o superior** instalado en el sistema.
+* Entorno virtual de Python configurado.
 
-A partir de las siguientes entregas, los avances vendrán acompañados de **demostraciones visuales y videos cortos** donde se evidenciará el funcionamiento del sistema en tiempo real:
-* **Autenticación e Ingreso:** Validación de identidad del elector y control de voto único.
-* **Cabina de Votación Digital:** Selección interactiva de candidatos y emisión anónima de la papeleta digital.
-* **Panel de Escrutinio y Resultados:** Visualización gráfica en tiempo real del conteo automatizado y generación del acta sellada.
+### 5.2 Configuración del Entorno Virtual e Instalación de Dependencias
+```bash
+# 1. Crear el entorno virtual en la raíz del proyecto
+python3 -m venv venv
+
+# 2. Activar el entorno virtual
+source venv/bin/activate
+
+# 3. Instalar las dependencias oficiales del sistema
+pip install -r requirements.txt
+```
+
+### 5.3 Ejecución de la Plataforma Web y API
+Para iniciar el servidor interactivo con recarga automática:
+```bash
+python3 -m src.main
+# O directamente mediante Uvicorn:
+uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+Una vez levantado el servidor, accede desde cualquier navegador a los siguientes módulos:
+* **Cabina de Votación Digital (Elector):** [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
+  - Terminal limpia y sobria para el ciudadano/estudiante (sin anotaciones técnicas internas).
+  - Digita tu documento habilitado según el modo activo.
+  - Selecciona un candidato o **Voto en Blanco** (con retroalimentación visual de alto contraste inspirada en la *Urna Eletrônica* de Brasil).
+  - Emite el sufragio y obtén tu **Comprobante Digital con Sello de Tiempo y Firma HMAC** (Decorator).
+  - Al hacer clic en *Ver Resultados en Vivo*, serás dirigido al panel público sin riesgos de tocar controles de jurados.
+* **Panel de Transmisión de Resultados en Vivo (Público):** [http://127.0.0.1:8000/dashboard](http://127.0.0.1:8000/dashboard)
+  - Visualización transparente en vivo para electores y observadores.
+  - Gráfico dinámico Chart.js y tabla de desglose porcentual en tiempo real.
+  - **No contiene botones administrativos destructivos.**
+* **Panel de Control Electoral y Jurados (Administración):** [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin)
+  - **Conmutador de Familia (Abstract Factory):** Alterna en caliente entre la *Elección Nacional (CNE)* y las *Elecciones Universitarias / Voceros (UDI)*.
+  - **Control Operativo de Urna (Proxy):** Abrir y cerrar la jornada con credenciales protegidas de Administrador.
+  - **Cierre y Escrutinio Definitivo (Builder):** Emite el Acta Oficial inmutable con hash SHA-256 y muestra el veredicto oficial de victoria emitido por la `TallyRule` (Mayoría Absoluta vs. Mayoría Simple).
+  - **Bitácora de Auditoría Forense (Proxy):** Inspecciona en vivo cada evento interceptado por el sistema.
+* **Documentación Interactiva Swagger UI:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+  - Prueba interactivamente cada endpoint REST (`/api/election/mode`, `/api/election/switch-mode`, `/api/auth/verify`, `/api/votes/cast`, `/api/tally/generate`).
+
+### 5.4 Credenciales de Prueba en el Censo Electoral
+Para realizar pruebas demostrativas de sufragio y rechazo:
+* **Modo Nacional (CNE - Cédula de Ciudadanía):**
+  - **Habilitados:** `10203040` (Laura Restrepo), `50607080` (Andrés Cepeda), `70809010` (Mariana Pajón), `80901020` (Julián Román).
+  - **Inhabilitado judicialmente:** `99999999` (Carlos Vives).
+* **Modo Universitario (UDI - Carnet Estudiantil):**
+  - **Habilitados:** `EST-2024` (Laura Restrepo), `EST-9012` (Andrés Cepeda), `EST-3341` (Mariana Pajón), `EST-5520` (Julián Román).
+  - **Inhabilitado / Sancionado:** `EST-9999` (Carlos Vives).
+
+### 5.5 Ejecución de la Suite de Pruebas Automatizadas (Pytest)
+El proyecto cuenta con una suite completa de pruebas unitarias y de integración que valida el 100% de los patrones, conmutación de familias y endpoints:
+```bash
+# Ejecutar todas las pruebas con reporte de cobertura en consola
+pytest tests/ --cov=src --cov-report=term-missing
+```
+* **Resultado actual:** **10 pruebas pasando (100%)** con una cobertura del **87%** sobre todo el código fuente.
+
+---
+
+## 6. Demostración Visual y Próximos Pasos
+
+A partir de este hito, el prototipo es completamente funcional e interactivo:
+* **Autenticación e Ingreso:** Validación de identidad del elector contra el Censo (Adapter) y control de voto único (Proxy).
+* **Cabina de Votación Digital:** Selección interactiva de candidatos (Flyweight) y emisión anónima con sellos de seguridad (Decorator).
+* **Panel de Escrutinio y Resultados:** Visualización gráfica en tiempo real (Chart.js) y generación del acta sellada con SHA-256 (Builder).

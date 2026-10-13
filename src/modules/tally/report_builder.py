@@ -2,7 +2,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 import hashlib
 import json
@@ -21,6 +21,7 @@ class ElectoralTallyReport:
     total_votes: int
     officer_signatures: List[str]
     integrity_hash: str
+    winner_verdict: Optional[str] = None
 
     def to_formatted_summary(self) -> str:
         lines = [
@@ -36,6 +37,10 @@ class ElectoralTallyReport:
             f"• Votos en Blanco: {self.blank_votes}",
             f"• Votos Nulos: {self.null_votes}",
             f"• Total Sufragios Emitidos: {self.total_votes}",
+        ])
+        if self.winner_verdict:
+            lines.append(f"• Veredicto Oficial (Regla de Escrutinio): {self.winner_verdict}")
+        lines.extend([
             f"Firmas de Jurados Registradas: {len(self.officer_signatures)}",
             f"Sello Digital SHA-256: {self.integrity_hash}",
         ])
@@ -66,6 +71,10 @@ class TallyReportBuilder(ABC):
         pass
 
     @abstractmethod
+    def set_winner_verdict(self, verdict: str) -> TallyReportBuilder:
+        pass
+
+    @abstractmethod
     def build(self) -> ElectoralTallyReport:
         pass
 
@@ -84,6 +93,7 @@ class OfficialTallyReportBuilder(TallyReportBuilder):
         self._blank_votes: int = 0
         self._null_votes: int = 0
         self._officer_signatures: List[str] = []
+        self._winner_verdict: Optional[str] = None
         return self
 
     def set_header(self, election_title: str, jurisdiction: str) -> OfficialTallyReportBuilder:
@@ -111,9 +121,13 @@ class OfficialTallyReportBuilder(TallyReportBuilder):
             self._officer_signatures.append(signature_code)
         return self
 
+    def set_winner_verdict(self, verdict: str) -> OfficialTallyReportBuilder:
+        self._winner_verdict = verdict
+        return self
+
     def build(self) -> ElectoralTallyReport:
         total = sum(self._candidate_votes.values()) + self._blank_votes + self._null_votes
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         payload = {
             "title": self._election_title,
@@ -125,6 +139,7 @@ class OfficialTallyReportBuilder(TallyReportBuilder):
             "null": self._null_votes,
             "total": total,
             "signatures": self._officer_signatures,
+            "winner_verdict": self._winner_verdict,
         }
         hash_digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
 
@@ -139,6 +154,7 @@ class OfficialTallyReportBuilder(TallyReportBuilder):
             total_votes=total,
             officer_signatures=list(self._officer_signatures),
             integrity_hash=hash_digest,
+            winner_verdict=self._winner_verdict,
         )
 
 

@@ -29,9 +29,49 @@ El patrón **Prototype** resuelve este problema permitiendo **clonar objetos exi
 
 ---
 
-## 3. Implementación Técnica en el Código
+## 3. Modelo Estructural y Diagrama de Clases (UML)
 
-### 3.1 La Interfaz Genérica `Prototype`
+El siguiente diagrama modela la estructura del patrón Prototype, ilustrando el contrato genérico `Prototype[T]`, la entidad clonable `VotingStation` con soporte para personalización mediante `assign_station()`, y el catálogo centralizado `StationPrototypeRegistry`:
+
+```mermaid
+classDiagram
+    direction TB
+
+    %% Interfaz Genérica Prototype
+    class Prototype~T~ {
+        <<interface>>
+        +clone()* T
+    }
+
+    %% Prototipo Concreto
+    class VotingStation {
+        +str station_id
+        +str polling_place
+        +str zone_code
+        +List~str~ allowed_ballot_types
+        +str hardware_terminal_code
+        +bool is_active
+        +List~str~ assigned_officers
+        +clone() VotingStation
+        +assign_station(new_station_id, new_terminal_code, new_officers) VotingStation
+    }
+
+    %% Registro de Catálogo
+    class StationPrototypeRegistry {
+        -Dict _prototypes
+        +register_prototype(prototype_key, station) void
+        +get_clone(prototype_key) VotingStation
+    }
+
+    Prototype <|.. VotingStation : implementa
+    StationPrototypeRegistry o-- VotingStation : administra y clona
+```
+
+---
+
+## 4. Implementación Técnica en el Código
+
+### 4.1 La Interfaz Genérica `Prototype`
 
 ```python
 from abc import ABC, abstractmethod
@@ -47,7 +87,7 @@ class Prototype(ABC, Generic[T]):
         pass
 ```
 
-### 3.2 Entidad Clonable con Copia Profunda (`VotingStation`)
+### 4.2 Entidad Clonable con Copia Profunda (`VotingStation`)
 
 ```python
 import copy
@@ -83,7 +123,7 @@ class VotingStation(Prototype["VotingStation"]):
         return self
 ```
 
-### 3.3 Catálogo de Prototipos (`StationPrototypeRegistry`)
+### 4.3 Catálogo de Prototipos (`StationPrototypeRegistry`)
 Permite registrar mesas plantilla según la sede y despachar copias listas para personalizar:
 
 ```python
@@ -106,7 +146,7 @@ class StationPrototypeRegistry:
 
 ---
 
-## 4. Análisis de Ingeniería de Software
+## 5. Análisis de Ingeniería de Software
 
 ### 4.1 Análisis Crítico: *Shallow Copy* vs *Deep Copy*
 En Python, una copia superficial (`copy.copy`) copia los campos del objeto pero mantiene la misma referencia en memoria para colecciones mutables como listas y diccionarios (`allowed_ballot_types`, `assigned_officers`). 

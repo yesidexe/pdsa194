@@ -9,6 +9,16 @@ from src.modules.voting.ballot_factory import (
     ReferendumBallotCreator,
     BlankBallotCreator,
 )
+from src.modules.voting.ballot_decorator import (
+    BallotSecurityDecorator,
+    TimestampSecurityDecorator,
+    DigitalSignatureDecorator,
+    AuditWatermarkDecorator,
+)
+from src.modules.voting.candidate_flyweight import (
+    CandidateMetadataFlyweight,
+    CandidateFlyweightFactory,
+)
 
 __all__ = [
     "Ballot",
@@ -19,4 +29,10 @@ __all__ = [
     "CandidateBallotCreator",
     "ReferendumBallotCreator",
     "BlankBallotCreator",
+    "BallotSecurityDecorator",
+    "TimestampSecurityDecorator",
+    "DigitalSignatureDecorator",
+    "AuditWatermarkDecorator",
+    "CandidateMetadataFlyweight",
+    "CandidateFlyweightFactory",
 ]

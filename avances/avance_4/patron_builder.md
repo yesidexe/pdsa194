@@ -30,11 +30,75 @@ El patrón **Builder** separa el proceso de construcción paso a paso de un obje
 
 ---
 
-## 3. Implementación Técnica en el Código
+## 3. Modelo Estructural y Diagrama de Clases (UML)
+
+El siguiente diagrama modela la separación entre el proceso de construcción progresivo (`TallyReportBuilder`), su implementación concreta (`OfficialTallyReportBuilder`), el director opcional para boletines estándar (`TallyReportDirector`) y el producto final complejo sellado con hash (`ElectoralTallyReport`):
+
+```mermaid
+classDiagram
+    direction TB
+
+    %% Director
+    class TallyReportDirector {
+        -TallyReportBuilder _builder
+        +construct_preliminary_bulletin(title, jurisdiction, tables, votes) ElectoralTallyReport
+    }
+
+    %% Builder Abstracto
+    class TallyReportBuilder {
+        <<abstract>>
+        +reset()* TallyReportBuilder
+        +set_header(election_title, jurisdiction)* TallyReportBuilder
+        +add_table_batch(table_ids)* TallyReportBuilder
+        +set_votes(candidate_votes, blank_votes, null_votes)* TallyReportBuilder
+        +add_officer_signature(signature_code)* TallyReportBuilder
+        +build()* ElectoralTallyReport
+    }
+
+    %% Builder Concreto
+    class OfficialTallyReportBuilder {
+        -str _election_title
+        -str _jurisdiction
+        -List~str~ _table_ids
+        -Dict _candidate_votes
+        -int _blank_votes
+        -int _null_votes
+        -List~str~ _officer_signatures
+        +reset() OfficialTallyReportBuilder
+        +set_header(election_title, jurisdiction) OfficialTallyReportBuilder
+        +add_table_batch(table_ids) OfficialTallyReportBuilder
+        +set_votes(candidate_votes, blank_votes, null_votes) OfficialTallyReportBuilder
+        +add_officer_signature(signature_code) OfficialTallyReportBuilder
+        +build() ElectoralTallyReport
+    }
+
+    %% Producto Complejo Inmutable
+    class ElectoralTallyReport {
+        +str election_title
+        +str jurisdiction
+        +datetime generated_at
+        +List~str~ table_ids
+        +Dict candidate_votes
+        +int blank_votes
+        +int null_votes
+        +int total_votes
+        +List~str~ officer_signatures
+        +str integrity_hash
+        +to_formatted_summary() str
+    }
+
+    TallyReportDirector o-- TallyReportBuilder : orquesta
+    TallyReportBuilder <|-- OfficialTallyReportBuilder : implementa
+    OfficialTallyReportBuilder ..> ElectoralTallyReport : construye
+```
+
+---
+
+## 4. Implementación Técnica en el Código
 
 La solución adopta la variante moderna **Fluent Builder** (encadenamiento de métodos) complementada con inmutabilidad en el producto final (`@dataclass(frozen=True)`).
 
-### 3.1 Producto Complejo e Inmutable (`ElectoralTallyReport`)
+### 4.1 Producto Complejo e Inmutable (`ElectoralTallyReport`)
 
 ```python
 @dataclass(frozen=True)
@@ -56,7 +120,7 @@ class ElectoralTallyReport:
         ...
 ```
 
-### 3.2 Constructor Abstracto y Concreto (`TallyReportBuilder` / `OfficialTallyReportBuilder`)
+### 4.2 Constructor Abstracto y Concreto (`TallyReportBuilder` / `OfficialTallyReportBuilder`)
 
 ```python
 import hashlib
@@ -148,7 +212,7 @@ class OfficialTallyReportBuilder(TallyReportBuilder):
         )
 ```
 
-### 3.3 Director de Construcción (`TallyReportDirector`)
+### 4.3 Director de Construcción (`TallyReportDirector`)
 Permite automatizar variantes predefinidas del producto, como un boletín preliminar de divulgación rápida:
 
 ```python
@@ -170,7 +234,7 @@ class TallyReportDirector:
 
 ---
 
-## 4. Análisis de Ingeniería de Software
+## 5. Análisis de Ingeniería de Software
 
 ### 4.1 Inmutabilidad Garantizada
 Al construirse el objeto con `frozen=True`, ninguna propiedad del acta puede modificarse a posteriori en memoria. Si un atacante o error intentara alterar un cómputo, Python generará una excepción inmediata.

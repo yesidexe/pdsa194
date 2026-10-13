@@ -20,9 +20,90 @@ El patrón **Abstract Factory** proporciona una interfaz única para crear **fam
 
 ---
 
-## 3. Implementación Técnica en el Código
+## 3. Modelo Estructural y Diagrama de Clases (UML)
 
-### 3.1 Productos Abstractos y Familias Concretas
+El siguiente diagrama modela la arquitectura del patrón Abstract Factory, mostrando la fábrica abstracta (`ElectoralFamilyFactory`), las fábricas concretas por ámbito (`NationalElectionFactory` y `UniversityElectionFactory`), y las tres familias de productos coordinados (`CredentialValidator`, `BallotHeader` y `TallyRule`):
+
+```mermaid
+classDiagram
+    direction TB
+
+    %% Fábrica Abstracta y Concretas
+    class ElectoralFamilyFactory {
+        <<abstract>>
+        +create_validator()* CredentialValidator
+        +create_header()* BallotHeader
+        +create_tally_rule()* TallyRule
+    }
+    class NationalElectionFactory {
+        +create_validator() CredentialValidator
+        +create_header() BallotHeader
+        +create_tally_rule() TallyRule
+    }
+    class UniversityElectionFactory {
+        +create_validator() CredentialValidator
+        +create_header() BallotHeader
+        +create_tally_rule() TallyRule
+    }
+    ElectoralFamilyFactory <|-- NationalElectionFactory
+    ElectoralFamilyFactory <|-- UniversityElectionFactory
+
+    %% Familia A: CredentialValidator
+    class CredentialValidator {
+        <<abstract>>
+        +validate_credential(document_id)* bool
+        +get_document_type()* str
+    }
+    class NationalCitizenValidator {
+        +validate_credential(document_id) bool
+        +get_document_type() str
+    }
+    class StudentCodeValidator {
+        +validate_credential(document_id) bool
+        +get_document_type() str
+    }
+    CredentialValidator <|-- NationalCitizenValidator
+    CredentialValidator <|-- StudentCodeValidator
+
+    %% Familia B: BallotHeader
+    class BallotHeader {
+        <<abstract>>
+        +render_header()* str
+    }
+    class NationalBallotHeader {
+        +render_header() str
+    }
+    class UniversityBallotHeader {
+        +render_header() str
+    }
+    BallotHeader <|-- NationalBallotHeader
+    BallotHeader <|-- UniversityBallotHeader
+
+    %% Familia C: TallyRule
+    class TallyRule {
+        <<abstract>>
+        +evaluate_winner(votes_summary)* str
+    }
+    class AbsoluteMajorityTallyRule {
+        +evaluate_winner(votes_summary) str
+    }
+    class SimplePluralityTallyRule {
+        +evaluate_winner(votes_summary) str
+    }
+    TallyRule <|-- AbsoluteMajorityTallyRule
+    TallyRule <|-- SimplePluralityTallyRule
+
+    %% Dependencias de creación
+    ElectoralFamilyFactory ..> CredentialValidator : fabrica
+    ElectoralFamilyFactory ..> BallotHeader : fabrica
+    ElectoralFamilyFactory ..> TallyRule : fabrica
+```
+
+---
+
+## 4. Implementación Técnica en el Código
+
+### 4.1 Productos Abstractos y Familias Concretas
 
 ```python
 from abc import ABC, abstractmethod
@@ -92,7 +173,7 @@ class SimplePluralityTallyRule(TallyRule):
         return f"Ganador electo por Mayoría Simple: {winner} ({votes_summary[winner]} votos)"
 ```
 
-### 3.2 Fábrica Abstracta y Fábricas Concretas
+### 4.2 Fábrica Abstracta y Fábricas Concretas
 
 ```python
 class ElectoralFamilyFactory(ABC):
@@ -135,7 +216,7 @@ class UniversityElectionFactory(ElectoralFamilyFactory):
 
 ---
 
-## 4. Análisis de Ingeniería de Software
+## 5. Análisis de Ingeniería de Software
 
 ### 4.1 Coherencia de Productos
 El mayor beneficio de Abstract Factory en este dominio es garantizar que nunca se mezclen productos de ámbitos distintos. El cliente simplemente solicita una `ElectoralFamilyFactory` y recibe objetos que están garantizados para operar en armonía conceptual y técnica.
