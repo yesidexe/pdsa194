@@ -340,7 +340,7 @@
                 <div>
                     <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Seguridad & Trazabilidad</span>
                     <h2 class="text-lg font-bold text-slate-900">Bitácora de Auditoría Electoral</h2>
-                    <p class="text-xs text-slate-400">Registro cronológico de accesos, validaciones e intervenciones en la plataforma.</p>
+                    <p class="text-xs text-slate-400">Registro cronológico de accesos, validaciones e intervenciones. Se actualiza automáticamente cada 10 s.</p>
                 </div>
                 <button onclick="loadAuditLogs()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
                     <i class="fa-solid fa-arrows-rotate"></i> Actualizar
@@ -425,6 +425,9 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadElectionMode();
             loadAuditLogs();
+            // Estado de urna, censo y bitácora se refrescan sin pulsar "Actualizar".
+            window.setInterval(loadElectionMode, 10000);
+            window.setInterval(loadAuditLogs, 10000);
         });
 
         async function loadElectionMode() {

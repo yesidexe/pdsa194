@@ -147,7 +147,7 @@
                 </div>
 
                 <div class="pt-4 border-t border-slate-100 text-center">
-                    <a href="/" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md shadow-blue-600/20 transition text-sm flex items-center justify-center gap-2">
+                    <a id="ctaVote" href="/" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md shadow-blue-600/20 transition text-sm flex items-center justify-center gap-2">
                         <i class="fa-solid fa-person-booth"></i> Emitir un Voto en Cabina
                     </a>
                 </div>
@@ -259,6 +259,33 @@
                     urnaStatusEl.className = "text-xl font-bold text-rose-600 mt-1 flex items-center gap-2";
                     urnaIconEl.className = "w-12 h-12 rounded-xl flex items-center justify-center text-xl bg-rose-50 text-rose-600";
                     urnaIconEl.innerHTML = `<i class="fa-solid fa-lock"></i>`;
+                }
+
+                const ctaVote = document.getElementById('ctaVote');
+                if (ctaVote) {
+                    if (dash.is_open) {
+                        ctaVote.href = '/';
+                        ctaVote.removeAttribute('aria-disabled');
+                        ctaVote.onclick = null;
+                        ctaVote.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md shadow-blue-600/20 transition text-sm flex items-center justify-center gap-2';
+                        ctaVote.style.transition = '';
+                        ctaVote.style.removeProperty('background-color');
+                        ctaVote.style.removeProperty('background-image');
+                        ctaVote.style.cursor = '';
+                        ctaVote.style.opacity = '';
+                        ctaVote.innerHTML = '<i class="fa-solid fa-person-booth"></i> Emitir un voto en cabina';
+                    } else {
+                        ctaVote.href = '#';
+                        ctaVote.setAttribute('aria-disabled', 'true');
+                        ctaVote.onclick = (event) => event.preventDefault();
+                        ctaVote.className = 'w-full text-white font-semibold py-2.5 px-4 rounded-xl transition text-sm flex items-center justify-center gap-2';
+                        ctaVote.style.transition = 'none';
+                        ctaVote.style.setProperty('background-color', '#dc2626', 'important');
+                        ctaVote.style.setProperty('background-image', 'none', 'important');
+                        ctaVote.style.cursor = 'not-allowed';
+                        ctaVote.style.opacity = '0.9';
+                        ctaVote.innerHTML = '<i class="fa-solid fa-lock"></i> Urna cerrada';
+                    }
                 }
 
                 document.getElementById('statTotalVotes').innerText = dash.total_votes_cast;

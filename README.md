@@ -93,53 +93,53 @@ La decisión de diseño más importante es la **separación entre participación
 
 ### 3.4 Detalle de patrones
 
-Los diagramas UML y la explicación de cada patrón están en [`avances/`](avances/) y la guía personal de estudio en [`docs/avances/`](docs/avances/). Este README resume la arquitectura; no duplica los diagramas.
+Los diagramas UML y la explicación de cada patrón están en [`docs/avances/`](docs/avances/). Este README resume la arquitectura; no duplica los diagramas.
 
 ---
 
 ## 4. Documentación por patrón
 
-La documentación técnica de los 5 patrones creacionales y los 7 estructurales está en `avances/` y se enlaza a continuación. El recorrido de uso con capturas está en [`avances/manual_de_uso.md`](avances/manual_de_uso.md).
+La documentación técnica de los 5 patrones creacionales y los 7 estructurales está en `docs/avances/` y se enlaza a continuación. El recorrido de uso con capturas está en [`docs/manual_de_uso.md`](docs/manual_de_uso.md).
 
 ### 4.1 Patrón Singleton
 * **Módulo:** `src/core/config.py` (`ElectoralConfigManager`).
 * **Resumen:** Se centralizó el estado y la configuración global de la jornada electoral garantizando una única instancia en memoria con soporte de concurrencia segura (*thread-safety*) mediante *Double-Checked Locking*. Se implementó control de re-inicialización y un método de aislamiento para pruebas automatizadas.
-* **Documentación:** [Lectura en línea (Markdown)](avances/avance_1/patron_singleton.md)
+* **Documentación:** [Lectura en línea (Markdown)](docs/avances/patron_singleton.md)
 
 ### 4.2 Patrón Factory Method
 * **Módulo:** `src/modules/voting/ballot_factory.py` (`BallotCreator` y jerarquía `Ballot`).
 * **Resumen:** Se desacopló la lógica de emisión de votos de la instanciación concreta de papeletas electorales (`CandidateBallot`, `ReferendumBallot`, `BlankBallot`). Cumple con el principio Open/Closed (OCP), permitiendo incorporar nuevas modalidades de voto sin modificar el código base.
-* **Documentación:** [Lectura en línea (Markdown)](avances/avance_2/patron_factory_method.md)
+* **Documentación:** [Lectura en línea (Markdown)](docs/avances/patron_factory_method.md)
 
 ### 4.3 Patrón Abstract Factory
 * **Módulo:** `src/modules/election/election_factory.py` (`ElectoralFamilyFactory`).
 * **Resumen:** Se implementó la creación de familias completas y coherentes de componentes según la jurisdicción de la elección (Nacional vs. Universitaria), abarcando validación de identidad, membrete oficial de papeleta y reglas de decisión para el escrutinio, garantizando la inversión de dependencias (DIP).
-* **Documentación:** [Lectura en línea (Markdown)](avances/avance_3/patron_abstract_factory.md)
+* **Documentación:** [Lectura en línea (Markdown)](docs/avances/patron_abstract_factory.md)
 
 ### 4.4 Patrón Builder
 * **Módulo:** `src/modules/tally/report_builder.py` (`TallyReportBuilder` y `ElectoralTallyReport`).
 * **Resumen:** Se implementó la construcción progresiva y desacoplada del Acta Oficial de Escrutinio y Cierre de Urnas, evitando el antipatrón de constructor telescópico. Consolida los cómputos y añade un sello de integridad SHA-256 al acta.
-* **Documentación:** [Lectura en línea (Markdown)](avances/avance_4/patron_builder.md)
+* **Documentación:** [Lectura en línea (Markdown)](docs/avances/patron_builder.md)
 
 ### 4.5 Patrón Prototype
 * **Módulo:** `src/modules/election/station_prototype.py` (`VotingStation` y `StationPrototypeRegistry`).
 * **Resumen:** Se formalizó la clonación y replicación rápida de mesas y estaciones de votación a partir de plantillas operativas preconfiguradas. Se implementó copia profunda (*deep copy*) para asegurar el aislamiento de colecciones mutables (jurados y tarjetones autorizados) y personalización segura de terminales.
-* **Documentación:** [Lectura en línea (Markdown)](avances/avance_5/patron_prototype.md)
+* **Documentación:** [Lectura en línea (Markdown)](docs/avances/patron_prototype.md)
 
 ### 4.6 Patrones Adapter y Bridge
 * **Módulos:** `src/modules/census/census_adapter.py` (`ICensusRegistry`, `JsonCensusAdapter`, `CsvCensusAdapter`) y `src/modules/transmission/bulletin_bridge.py` (`ElectoralBulletin`, `ITransmissionChannel`).
 * **Resumen:** Se implementó el patrón **Adapter** para homogeneizar censos electorales de fuentes heterogéneas (archivos planos CSV de Registraduría vs exportaciones JSON institucionales) hacia el modelo canónico del dominio. En paralelo, se implementó el patrón **Bridge** para desacoplar los tipos de boletines y alertas electorales de sus canales físicos de transporte (consola oficial, archivo persistente y sink de auditoría en memoria), evitando la explosión combinatoria multidimensional.
-* **Documentación:** [Lectura en línea (Markdown)](avances/avance_6/patron_adapter_bridge.md)
+* **Documentación:** [Lectura en línea (Markdown)](docs/avances/patron_adapter_bridge.md)
 
 ### 4.7 Patrones Composite, Decorator y Facade
 * **Módulos:** `src/modules/election/jurisdiction_composite.py` (`ElectoralUnit`, `VotingStationLeaf`, `ElectoralJurisdictionComposite`), `src/modules/voting/ballot_decorator.py` (`BallotSecurityDecorator`, `TimestampSecurityDecorator`, `DigitalSignatureDecorator`, `AuditWatermarkDecorator`), y `src/modules/facade/voting_facade.py` (`VotingSystemFacade`).
 * **Resumen:** Se implementó el patrón **Composite** para estructurar jerárquicamente el censo y mesas de votación (País -> Departamento/Puesto -> Mesa) tratando unidades individuales y agrupaciones de forma uniforme. Se implementó el patrón **Decorator** para envolver dinámicamente las papeletas con capas de seguridad acumulativas (sello de tiempo ISO-8601, sello de integridad HMAC-SHA256 y marca de agua de auditoría) sin alterar la clase base `Ballot`. Finalmente, se integró el patrón **Facade** como punto de entrada unificado que coordina todos los subsistemas creacionales y estructurales de cara a la interfaz web y la API REST.
-* **Documentación:** [Lectura en línea (Markdown)](avances/avance_7/patron_composite_decorator_facade.md)
+* **Documentación:** [Lectura en línea (Markdown)](docs/avances/patron_composite_decorator_facade.md)
 
 ### 4.8 Patrones Proxy y Flyweight
 * **Módulos:** `src/modules/security/access_proxy.py` (`ElectoralAccessProxy`, `UserSession`, `UserRole`) y `src/modules/voting/candidate_flyweight.py` (`CandidateMetadataFlyweight`, `CandidateFlyweightFactory`).
 * **Resumen:** Se implementó el patrón **Proxy** como sustituto protector que intercepta operaciones críticas del sistema electoral (apertura/cierre de urnas, emisión de votos y reinicio de jornada) validando la sesión del administrador y roles, además de registrar una bitácora de auditoría. En paralelo, se implementó el patrón **Flyweight** para compartir metadatos de los candidatos en memoria. El catálogo compartido alimenta el tarjetón y la validación server-side de candidatos; la papeleta persiste el identificador de la opción para no duplicar la ficha completa en cada voto. Con esto se completaron los **7 patrones estructurales** del catálogo GoF.
-* **Documentación:** [Lectura en línea (Markdown)](avances/avance_8/patron_proxy_flyweight.md)
+* **Documentación:** [Lectura en línea (Markdown)](docs/avances/patron_proxy_flyweight.md)
 
 ---
 
@@ -226,7 +226,7 @@ A partir de este hito, el prototipo local es funcional e interactivo:
 * **Panel de Escrutinio y Resultados:** Visualización gráfica en tiempo real (Chart.js) y generación del acta sellada con SHA-256 (Builder).
 ### 6.1 Próximos pasos
 
-El roadmap funcional está en [`docs/registro_mejoras.md`](docs/registro_mejoras.md), sección 5. Los siguientes hitos son:
+El roadmap funcional está en [`docs/mejoras.md`](docs/mejoras.md), secciones 2 y 3. Los siguientes hitos son:
 
 1. Guardar `station_id` en el voto y agregar resultados por mesa.
 2. Mover instituciones, elecciones y candidatos a tablas normalizadas.

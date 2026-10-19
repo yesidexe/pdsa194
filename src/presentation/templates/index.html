@@ -263,6 +263,8 @@
         let currentVoter = null;
         let selectedVote = null;
         let activeElectionMode = null;
+        let lastModeSignature = null;
+        let isUrnaOpen = null;
 
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
@@ -310,6 +312,9 @@
             loadCandidates();
             checkUrnaStatus();
             setStep(1);
+            // La cabina escucha cambios del panel sin recargar la página.
+            window.setInterval(loadElectionMode, 10000);
+            window.setInterval(checkUrnaStatus, 5000);
         });
 
         async function loadElectionMode() {
@@ -331,8 +336,38 @@
                 } else {
                     docInput.placeholder = "Ej: 10203040 o 50607080";
                 }
+
+                // Si el administrador cambia de modalidad, el tarjetón se refresca.
+                const signature = `${data.mode}|${data.election_title}`;
+                const modeChanged = lastModeSignature !== null && lastModeSignature !== signature;
+                lastModeSignature = signature;
+                if (modeChanged) {
+                    if (currentVoter) {
+                        cancelVote();
+                        showToast('La modalidad electoral cambió. Vuelve a identificarte.', 'info');
+                    }
+                    loadCandidates();
+                }
             } catch (err) {
                 console.error("Error al cargar modo electoral:", err);
+            }
+        }
+
+        function applyVoteAvailability(open) {
+            const verifyButton = document.getElementById('btnVerify');
+            const confirmButton = document.getElementById('btnConfirmCast');
+            if (verifyButton) {
+                verifyButton.disabled = !open;
+                verifyButton.style.backgroundColor = open ? '' : '#dc2626';
+                verifyButton.style.cursor = open ? '' : 'not-allowed';
+                verifyButton.style.opacity = open ? '' : '0.9';
+                const label = verifyButton.querySelector('span');
+                if (label) label.innerText = open ? 'Verificar elector' : 'Urna cerrada';
+            }
+            if (confirmButton && !open) {
+                confirmButton.disabled = true;
+            } else if (confirmButton && selectedVote) {
+                confirmButton.disabled = false;
             }
         }
 
@@ -341,12 +376,18 @@
                 const res = await fetch('/api/dashboard');
                 const data = await res.json();
                 const badge = document.getElementById('badgeUrna');
+                const wasOpen = isUrnaOpen;
+                isUrnaOpen = Boolean(data.is_open);
                 if (data.is_open) {
                     badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 radar-beacon"></span> <span>Urna Abierta</span>`;
                     badge.className = "px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-2";
                 } else {
                     badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span> <span>Urna Cerrada</span>`;
                     badge.className = "px-3.5 py-1.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-2";
+                }
+                applyVoteAvailability(data.is_open);
+                if (wasOpen !== null && wasOpen !== data.is_open) {
+                    showToast(data.is_open ? 'La urna fue abierta. Ya puedes votar.' : 'La urna fue cerrada por el administrador.', data.is_open ? 'success' : 'info');
                 }
             } catch (err) {
                 console.error(err);
@@ -454,6 +495,10 @@
         }
 
         function selectOption(type, payload, elementId = null) {
+            if (isUrnaOpen === false) {
+                showToast('La urna está cerrada. No se pueden seleccionar opciones.', 'info');
+                return;
+            }
             selectedVote = { type, payload };
 
             // Reset estilos de candidatos
@@ -501,10 +546,14 @@
                 blankBadge.innerHTML = `<i class="fa-solid fa-check"></i> Seleccionado`;
             }
 
-            document.getElementById('btnConfirmCast').disabled = false;
+            document.getElementById('btnConfirmCast').disabled = isUrnaOpen === false;
         }
 
         async function castVote() {
+            if (isUrnaOpen === false) {
+                showToast('La urna está cerrada. No se puede emitir el voto.', 'error');
+                return;
+            }
             if (!selectedVote || !currentVoter) return;
 
             const confirmBtn = document.getElementById('btnConfirmCast');

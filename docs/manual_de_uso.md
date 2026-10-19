@@ -151,6 +151,12 @@ La expresión “aún no finalizar” no aplica aquí: **el acta es la finalizac
 
 *Figura 3. Panel administrativo con el estado de la urna y las acciones de cierre, acta y reinicio.*
 
+### 3.3 Actualización automática
+
+- La cabina consulta el estado de la urna cada **5 segundos** y la modalidad cada **10 segundos**. Si el administrador cierra la urna, el botón de verificación se deshabilita y cambia a “Urna cerrada”.
+- El dashboard se refresca cada **5 segundos** y cambia su botón de cabina por “Urna cerrada” cuando la jornada está bloqueada.
+- El panel administrativo refresca estado, censo y bitácora cada **10 segundos**, sin necesidad de pulsar “Actualizar”.
+
 ### 3.3 Reiniciar la jornada
 
 El botón **Reiniciar jornada** es la forma correcta de volver a probar el flujo:
