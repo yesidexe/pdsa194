@@ -28,7 +28,12 @@
                     <i class="fa-solid fa-chart-line text-lg text-blue-300"></i>
                 </div>
                 <div>
-                    <h1 class="text-lg font-bold tracking-tight">RESULTADOS EN VIVO</h1>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg font-bold tracking-tight">RESULTADOS EN VIVO</h1>
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 radar-beacon"></span> LIVE
+                        </span>
+                    </div>
                     <p id="dashboardSubheader" class="text-xs text-slate-300">Escrutinio público y transparente en tiempo real</p>
                 </div>
                 <span class="hidden sm:inline-flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/20 text-[11px] font-semibold">
@@ -36,6 +41,9 @@
                 </span>
             </div>
             <div class="flex flex-wrap items-center justify-center gap-2">
+                <span id="latencyPill" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-slate-300 bg-white/5 border border-white/10 text-[11px] font-mono">
+                    <i class="fa-solid fa-circle-dot text-[8px] text-emerald-400"></i> <span id="latencyValue">Sync: 12ms</span>
+                </span>
                 <a href="/" class="text-xs bg-white/10 hover:bg-white/15 transition px-3 py-1.5 rounded-lg border border-white/15 flex items-center gap-1.5">
                     <i class="fa-solid fa-person-booth"></i> Cabina
                 </a>
@@ -66,7 +74,7 @@
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between hover-lift">
                 <div>
                     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sufragios en Urna</p>
-                    <h3 id="statTotalVotes" class="text-3xl font-extrabold text-blue-600 mt-1">0</h3>
+                    <h3 id="statTotalVotes" class="text-3xl font-extrabold text-blue-600 mt-1 font-tabular">0</h3>
                     <p class="text-[11px] text-slate-400 mt-0.5">Custodiados anónimamente</p>
                 </div>
                 <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl bg-blue-50 text-blue-600">
@@ -78,7 +86,7 @@
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between hover-lift">
                 <div>
                     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Censo Habilitado</p>
-                    <h3 id="statTotalCensus" class="text-3xl font-extrabold text-slate-800 mt-1">0</h3>
+                    <h3 id="statTotalCensus" class="text-3xl font-extrabold text-slate-800 mt-1 font-tabular">0</h3>
                     <p class="text-[11px] text-slate-400 mt-0.5">Electores registrados</p>
                 </div>
                 <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl bg-indigo-50 text-indigo-600">
@@ -90,7 +98,7 @@
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between hover-lift">
                 <div>
                     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Participación</p>
-                    <h3 id="statTurnout" class="text-3xl font-extrabold text-emerald-600 mt-1">0%</h3>
+                    <h3 id="statTurnout" class="text-3xl font-extrabold text-emerald-600 mt-1 font-tabular">0%</h3>
                     <p class="text-[11px] text-slate-400 mt-0.5">Porcentaje de sufragio</p>
                 </div>
                 <div class="w-12 h-12 rounded-xl flex items-center justify-center text-xl bg-emerald-50 text-emerald-600">
@@ -179,24 +187,41 @@
                         label: 'Votos Registrados',
                         data: [],
                         backgroundColor: [],
-                        borderRadius: 8,
+                        borderRadius: 10,
+                        borderSkipped: false,
+                        maxBarThickness: 48
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: false }
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleFont: { family: "'Inter', sans-serif", weight: '600' },
+                            bodyFont: { family: "'Inter', sans-serif" },
+                            padding: 10,
+                            cornerRadius: 8,
+                            displayColors: false
+                        }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            ticks: { precision: 0, font: { family: 'sans-serif' } },
-                            grid: { color: '#F1F5F9' }
+                            ticks: { 
+                                precision: 0, 
+                                font: { family: "'Inter', sans-serif", weight: '500' },
+                                color: '#64748b'
+                            },
+                            grid: { color: '#f1f5f9' }
                         },
                         x: {
                             grid: { display: false },
-                            ticks: { font: { family: 'sans-serif', size: 11 } }
+                            ticks: { 
+                                font: { family: "'Inter', sans-serif", size: 11, weight: '500' },
+                                color: '#475569'
+                            }
                         }
                     }
                 }
@@ -204,10 +229,19 @@
         }
 
         async function refreshData() {
+            const t0 = performance.now();
             try {
                 // 1. Métricas de Dashboard
                 const dashRes = await fetch('/api/dashboard');
                 const dash = await dashRes.json();
+                const latencyMs = Math.round(performance.now() - t0);
+
+                const latencyPill = document.getElementById('latencyPill');
+                const latencyVal = document.getElementById('latencyValue');
+                if (latencyPill && latencyVal) {
+                    latencyVal.innerText = `Sync: ${latencyMs}ms`;
+                    latencyPill.classList.remove('hidden');
+                }
 
                 // Estado Urna
                 const urnaStatusEl = document.getElementById('statUrnaStatus');
@@ -217,12 +251,12 @@
 
                 if (dash.is_open) {
                     urnaStatusEl.innerText = "Abierta";
-                    urnaStatusEl.className = "text-xl font-bold text-emerald-600 mt-1";
+                    urnaStatusEl.className = "text-xl font-bold text-emerald-600 mt-1 flex items-center gap-2";
                     urnaIconEl.className = "w-12 h-12 rounded-xl flex items-center justify-center text-xl bg-emerald-50 text-emerald-600";
                     urnaIconEl.innerHTML = `<i class="fa-solid fa-lock-open"></i>`;
                 } else {
                     urnaStatusEl.innerText = "Cerrada";
-                    urnaStatusEl.className = "text-xl font-bold text-rose-600 mt-1";
+                    urnaStatusEl.className = "text-xl font-bold text-rose-600 mt-1 flex items-center gap-2";
                     urnaIconEl.className = "w-12 h-12 rounded-xl flex items-center justify-center text-xl bg-rose-50 text-rose-600";
                     urnaIconEl.innerHTML = `<i class="fa-solid fa-lock"></i>`;
                 }
@@ -272,21 +306,26 @@
             chartInstance.data.datasets[0].backgroundColor = colors;
             chartInstance.update();
 
-            // Renderizar lista en panel derecho
+            // Renderizar lista en panel derecho con barras de progreso animadas
             const breakdownEl = document.getElementById('resultsBreakdownList');
             breakdownEl.innerHTML = labels.map((name, i) => {
                 const count = dataValues[i];
                 const pct = totalVotes > 0 ? ((count / totalVotes) * 100).toFixed(1) : '0.0';
                 return `
-                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                        <div class="flex items-center gap-2.5">
-                            <span class="w-3 h-3 rounded-full" style="background-color: ${escapeHtml(colors[i])}"></span>
-                            <div>
-                                <p class="text-xs font-bold text-slate-800 leading-tight">${escapeHtml(name)}</p>
-                                <p class="text-[10px] text-slate-400 font-medium">${pct}% del total</p>
+                    <div class="p-3.5 bg-slate-50/80 hover:bg-slate-50 rounded-xl border border-slate-200/80 transition space-y-2">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="w-3 h-3 rounded-full shrink-0 shadow-xs" style="background-color: ${escapeHtml(colors[i])}"></span>
+                                <p class="text-xs font-bold text-slate-800 leading-tight truncate">${escapeHtml(name)}</p>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <span class="text-xs font-extrabold text-slate-800 font-tabular">${count}</span>
+                                <span class="text-[10px] text-slate-400 font-medium font-tabular ml-1">(${pct}%)</span>
                             </div>
                         </div>
-                        <span class="text-sm font-extrabold text-slate-700">${count}</span>
+                        <div class="w-full bg-slate-200/70 h-2 rounded-full overflow-hidden">
+                            <div class="bar-progress-animated h-full rounded-full" style="width: ${pct}%; background-color: ${escapeHtml(colors[i])}"></div>
+                        </div>
                     </div>
                 `;
             }).join('');

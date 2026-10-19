@@ -34,9 +34,9 @@
                 </span>
             </div>
             <div class="flex flex-wrap items-center justify-center gap-2">
-                <span id="badgeUrna" class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Urna Abierta
+                <span id="badgeUrna" class="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 radar-beacon"></span>
+                    <span>Urna Abierta</span>
                 </span>
                 <a href="/admin" class="text-xs bg-white/10 hover:bg-white/15 transition px-3 py-1.5 rounded-lg border border-white/15 flex items-center gap-1.5">
                     <i class="fa-solid fa-user-shield"></i> Panel administrativo
@@ -178,48 +178,73 @@
         <!-- PASO 3: Comprobante de Votación (Sello Digital & Recibo) -->
         <section id="stepReceipt" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8 transition-all">
             <div class="max-w-xl mx-auto text-center">
-                <div class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">
-                    <i class="fa-solid fa-circle-check"></i>
+                <div class="relative w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                    <div class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center text-3xl seal-stamp-animated shadow-inner">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <span class="absolute -top-1 -right-1 flex h-4 w-4">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
+                    </span>
                 </div>
                 <h2 class="text-2xl font-bold text-slate-900 mb-1">¡Sufragio Emitido con Éxito!</h2>
                 <p class="text-sm text-slate-500 mb-6">
-                    Su voto ha sido sellado con capas criptográficas en memoria e ingresado a la urna digital de forma anónima.
+                    Su voto ha sido sellado con capas criptográficas en memoria e ingresado a la urna digital de forma anónima e irreversible.
                 </p>
 
-                <!-- Certificado Digital Visual -->
-                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-5 text-left mb-6 font-mono text-xs space-y-2 relative overflow-hidden shadow-inner">
-                    <div class="absolute right-3 top-3 text-slate-300 text-6xl opacity-20 pointer-events-none">
-                        <i class="fa-solid fa-shield-halved"></i>
+                <!-- Certificado Digital Visual Estilo Papel de Seguridad -->
+                <div class="official-certificate rounded-2xl p-6 text-left mb-6 font-mono text-xs space-y-3 relative overflow-hidden">
+                    <div class="absolute right-4 top-4 text-slate-300 text-7xl opacity-15 pointer-events-none">
+                        <i class="fa-solid fa-stamp"></i>
                     </div>
-                    <div class="flex justify-between border-b border-slate-200 pb-2">
-                        <span class="text-slate-400">CERTIFICADO ELECTORAL DIGITAL</span>
-                        <span class="text-emerald-600 font-bold">SELLO DE INTEGRIDAD</span>
+
+                    <div class="flex justify-between items-center border-b border-stone-200 pb-3">
+                        <div>
+                            <span class="text-[10px] uppercase font-bold tracking-widest text-slate-400 block">REPÚBLICA DE COLOMBIA</span>
+                            <span class="text-slate-800 font-bold text-xs font-sans">CERTIFICADO ELECTORAL DIGITAL OFICIAL</span>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold border border-emerald-200 flex items-center gap-1 font-sans">
+                            <i class="fa-solid fa-circle-check"></i> SELLADO EN URNA
+                        </span>
                     </div>
-                    <div>
-                        <span class="text-slate-500">Código de Recibo:</span>
-                        <span id="receiptCode" class="text-blue-700 font-bold text-sm block tracking-widest"></span>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div>
+                            <span class="text-[11px] text-slate-400 block font-sans">Código de Verificación:</span>
+                            <span id="receiptCode" class="text-blue-700 font-bold text-sm block tracking-wider font-mono select-all"></span>
+                        </div>
+                        <div>
+                            <span class="text-[11px] text-slate-400 block font-sans">ID Papeleta Anónima:</span>
+                            <span id="receiptBallotId" class="text-slate-700 block truncate font-mono select-all"></span>
+                        </div>
                     </div>
-                    <div>
-                        <span class="text-slate-500">ID Papeleta Anónima:</span>
-                        <span id="receiptBallotId" class="text-slate-700 block truncate"></span>
+
+                    <div class="border-t border-stone-200/80 pt-2 space-y-2">
+                        <div>
+                            <span class="text-[11px] text-slate-400 block font-sans">Sello de tiempo UTC:</span>
+                            <span id="receiptTimestamp" class="text-slate-700 block font-mono"></span>
+                        </div>
+                        <div>
+                            <span class="text-[11px] text-slate-400 block font-sans">Firma HMAC-SHA256 (Integridad):</span>
+                            <span id="receiptSignature" class="text-slate-600 block text-[11px] break-all font-mono bg-white/70 p-2 rounded-lg border border-stone-200 select-all"></span>
+                        </div>
                     </div>
-                    <div>
-                        <span class="text-slate-500">Sello de tiempo UTC:</span>
-                        <span id="receiptTimestamp" class="text-slate-700 block"></span>
-                    </div>
-                    <div>
-                        <span class="text-slate-500">Sello HMAC-SHA256:</span>
-                        <span id="receiptSignature" class="text-slate-600 block truncate"></span>
+
+                    <div class="pt-2 text-[10px] text-slate-400 font-sans border-t border-stone-200/60 flex items-center justify-between">
+                        <span><i class="fa-solid fa-shield-halved text-emerald-600 mr-1"></i> Garantía de voto secreto e inmutable</span>
+                        <span class="font-mono">ISO/IEC 27001 SIM</span>
                     </div>
                 </div>
 
-                <div class="flex flex-col sm:flex-row gap-3 justify-center">
-                    <button onclick="resetFlow()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-xl transition text-sm">
-                        Nuevo Elector
+                <div class="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                    <button onclick="window.print()" class="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-5 py-2.5 rounded-xl transition text-sm flex items-center justify-center gap-2 border border-slate-200">
+                        <i class="fa-solid fa-print"></i> Imprimir Constancia
                     </button>
-                    <!-- Enlace público a /dashboard SIN opciones de admin -->
-                    <a href="/dashboard" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium px-6 py-2.5 rounded-xl transition text-sm flex items-center justify-center gap-1.5">
-                        <i class="fa-solid fa-chart-line"></i> Ver Resultados en Vivo
+                    <button onclick="resetFlow()" class="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 py-2.5 rounded-xl transition text-sm flex items-center justify-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-user-plus"></i> Nuevo Elector
+                    </button>
+                    <a href="/dashboard" class="w-full sm:w-auto bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold px-5 py-2.5 rounded-xl transition text-sm flex items-center justify-center gap-1.5 border border-blue-200">
+                        <i class="fa-solid fa-chart-line"></i> Ver Resultados
                     </a>
                 </div>
             </div>
@@ -317,11 +342,11 @@
                 const data = await res.json();
                 const badge = document.getElementById('badgeUrna');
                 if (data.is_open) {
-                    badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Urna Abierta`;
-                    badge.className = "px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5";
+                    badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 radar-beacon"></span> <span>Urna Abierta</span>`;
+                    badge.className = "px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-2";
                 } else {
-                    badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span> Urna Cerrada`;
-                    badge.className = "px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/40 flex items-center gap-1.5";
+                    badge.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span> <span>Urna Cerrada</span>`;
+                    badge.className = "px-3.5 py-1.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-2";
                 }
             } catch (err) {
                 console.error(err);
@@ -337,26 +362,42 @@
 
                 candidates.forEach(c => {
                     const card = document.createElement('div');
-                    card.className = "p-4 rounded-xl border-2 border-slate-200 hover:border-blue-500 bg-white transition cursor-pointer flex flex-col justify-between candidate-card";
+                    card.className = "candidate-card-pro p-5 rounded-2xl bg-white flex flex-col justify-between";
+                    card.style.setProperty('--candidate-color', c.color || '#2563eb');
                     card.id = `cand-${c.candidate_id}`;
+                    card.setAttribute('role', 'button');
+                    card.setAttribute('tabindex', '0');
                     card.onclick = () => selectOption('candidate', {
                         candidate_id: c.candidate_id
                     }, `cand-${c.candidate_id}`);
+                    card.onkeydown = (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            card.click();
+                        }
+                    };
 
                     card.innerHTML = `
-                        <div class="flex items-start gap-3">
-                            <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm" style="background-color: ${escapeHtml(c.color)}">
-                                ${escapeHtml(c.candidate_name.charAt(0))}
+                        <div>
+                            <div class="flex items-start justify-between gap-3 mb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm" style="background-color: ${escapeHtml(c.color || '#2563eb')}">
+                                        ${escapeHtml(c.candidate_name ? c.candidate_name.charAt(0) : '?')}
+                                    </div>
+                                    <div>
+                                        <span class="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 mb-0.5">${escapeHtml(c.party_name)}</span>
+                                        <h3 class="font-bold text-slate-900 text-base leading-snug">${escapeHtml(c.candidate_name)}</h3>
+                                    </div>
+                                </div>
+                                <span class="select-badge text-xs font-bold px-2.5 py-1 rounded-full text-white bg-slate-900 hidden items-center gap-1 shadow-sm">
+                                    <i class="fa-solid fa-check"></i> Elegido
+                                </span>
                             </div>
-                            <div class="flex-1">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">${escapeHtml(c.party_name)}</span>
-                                <h3 class="font-bold text-slate-900 text-base leading-snug">${escapeHtml(c.candidate_name)}</h3>
-                                <p class="text-xs text-slate-500 mt-1 italic">"${escapeHtml(c.slogan)}"</p>
-                            </div>
+                            <p class="text-xs text-slate-500 italic pl-1 border-l-2 border-slate-200 my-2">"${escapeHtml(c.slogan)}"</p>
                         </div>
-                        <div class="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs">
-                            <span class="text-slate-400 font-mono">ID: ${escapeHtml(c.candidate_id)}</span>
-                            <span class="select-badge text-blue-600 font-semibold hidden"><i class="fa-solid fa-check-circle"></i> Seleccionado</span>
+                        <div class="mt-3 pt-3 border-t border-slate-100 flex justify-between items-center text-xs text-slate-400 font-mono">
+                            <span>ID: ${escapeHtml(c.candidate_id)}</span>
+                            <span class="text-[11px] font-sans text-slate-400 font-medium tap-hint">Toca para seleccionar</span>
                         </div>
                     `;
                     grid.appendChild(card);
@@ -398,9 +439,11 @@
                 currentVoter = data;
                 document.getElementById('voterNameBadge').innerText = `${data.full_name} (${data.assigned_station})`;
 
-                // Transición al tarjetón
+                // Transición fluida al tarjetón
                 document.getElementById('stepAuth').classList.add('hidden');
-                document.getElementById('stepBallot').classList.remove('hidden');
+                const stepBallot = document.getElementById('stepBallot');
+                stepBallot.classList.remove('hidden');
+                stepBallot.classList.add('step-animated');
                 setStep(2);
 
             } catch (err) {
@@ -414,9 +457,15 @@
             selectedVote = { type, payload };
 
             // Reset estilos de candidatos
-            document.querySelectorAll('.candidate-card').forEach(el => {
-                el.classList.remove('border-blue-600', 'bg-blue-50/40', 'ring-2', 'ring-blue-600');
-                el.querySelector('.select-badge').classList.add('hidden');
+            document.querySelectorAll('.candidate-card-pro').forEach(el => {
+                el.classList.remove('is-selected');
+                const badge = el.querySelector('.select-badge');
+                if (badge) {
+                    badge.classList.add('hidden');
+                    badge.classList.remove('inline-flex');
+                }
+                const hint = el.querySelector('.tap-hint');
+                if (hint) hint.innerText = 'Toca para seleccionar';
             });
 
             const btnBlank = document.getElementById('btnBlank');
@@ -426,8 +475,16 @@
             if (elementId) {
                 // Candidato seleccionado
                 const el = document.getElementById(elementId);
-                el.classList.add('border-blue-600', 'bg-blue-50/40', 'ring-2', 'ring-blue-600');
-                el.querySelector('.select-badge').classList.remove('hidden');
+                if (el) {
+                    el.classList.add('is-selected');
+                    const badge = el.querySelector('.select-badge');
+                    if (badge) {
+                        badge.classList.remove('hidden');
+                        badge.classList.add('inline-flex');
+                    }
+                    const hint = el.querySelector('.tap-hint');
+                    if (hint) hint.innerText = 'Seleccionado';
+                }
 
                 // Reset Voto en Blanco
                 btnBlank.className = "w-full p-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-slate-400 bg-slate-50 hover:bg-slate-100 transition flex items-center justify-between group";
@@ -452,7 +509,7 @@
 
             const confirmBtn = document.getElementById('btnConfirmCast');
             confirmBtn.disabled = true;
-            confirmBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Registrando voto...`;
+            confirmBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Registrando sufragio anónimo...`;
 
             try {
                 const pin = document.getElementById('pinInput').value.trim();
@@ -476,14 +533,16 @@
                     return;
                 }
 
-                // Mostrar Comprobante Digital
+                // Mostrar Comprobante Digital Oficial
                 document.getElementById('receiptCode').innerText = data.receipt_code;
                 document.getElementById('receiptBallotId').innerText = data.ballot_id;
                 document.getElementById('receiptTimestamp').innerText = data.timestamp_seal || data.issued_at;
                 document.getElementById('receiptSignature').innerText = data.digital_signature || 'No disponible';
 
                 document.getElementById('stepBallot').classList.add('hidden');
-                document.getElementById('stepReceipt').classList.remove('hidden');
+                const stepReceipt = document.getElementById('stepReceipt');
+                stepReceipt.classList.remove('hidden');
+                stepReceipt.classList.add('step-animated');
                 setStep(3);
 
             } catch (err) {
@@ -497,7 +556,9 @@
             currentVoter = null;
             selectedVote = null;
             document.getElementById('stepBallot').classList.add('hidden');
-            document.getElementById('stepAuth').classList.remove('hidden');
+            const stepAuth = document.getElementById('stepAuth');
+            stepAuth.classList.remove('hidden');
+            stepAuth.classList.add('step-animated');
             document.getElementById('documentInput').value = '';
             document.getElementById('pinInput').value = '';
             setStep(1);
@@ -507,7 +568,9 @@
             currentVoter = null;
             selectedVote = null;
             document.getElementById('stepReceipt').classList.add('hidden');
-            document.getElementById('stepAuth').classList.remove('hidden');
+            const stepAuth = document.getElementById('stepAuth');
+            stepAuth.classList.remove('hidden');
+            stepAuth.classList.add('step-animated');
             document.getElementById('documentInput').value = '';
             document.getElementById('pinInput').value = '';
             document.getElementById('btnConfirmCast').disabled = true;
