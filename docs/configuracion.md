@@ -4,18 +4,15 @@
 
 ## 1. El archivo `.env`
 
-- `.env.example` es la plantilla pública que está en el repositorio.
-- `.env` es tu configuración local y está ignorado por Git.
-- Si no existe `.env`, la aplicación usa valores por defecto.
-- Los cambios en `.env` requieren reiniciar la aplicación.
+`.env.example` es la plantilla pública del repositorio. Contiene todas las variables; las opcionales están comentadas. `.env` es tu copia local y está ignorada por Git.
 
-Para crear tu archivo local:
+Si no existe `.env`, la aplicación usa los valores por defecto. Para crear uno:
 
 ```bash
 cp .env.example .env
 ```
 
-El cargador es sencillo: una variable por línea, con la forma `CLAVE=valor`. Los comentarios van en su propia línea, comenzando con `#`. Si una variable ya existe en el entorno del sistema, esa tiene prioridad sobre `.env`.
+Edita `.env` si necesitas cambiar algo. Los cambios requieren reiniciar la aplicación.
 
 ## 2. Variables disponibles
 
@@ -23,13 +20,12 @@ El cargador es sencillo: una variable por línea, con la forma `CLAVE=valor`. Lo
 
 | Variable | Valor por defecto | Qué hace |
 |---|---|---|
-| `APP_ENV` | `local` | Etiqueta del entorno. **Hoy no cambia el comportamiento de la aplicación.** |
 | `ADMIN_USER` | `admin` | Usuario del panel administrador. |
-| `ADMIN_PASSWORD` | `admin1234` | Contraseña del administrador en texto plano. Se ignora si existe `ADMIN_PASSWORD_HASH`. |
-| `SECRET_KEY` | Se genera aleatoriamente si falta | Firma la cookie de sesión del administrador con HMAC-SHA256. **No cifra los votos.** |
-| `SESSION_MAX_AGE_SECONDS` | `28800` | Duración de la sesión del administrador. `28800` segundos = 8 horas. |
-| `AUTO_OPEN_POLLS` | `true` | Abre la urna automáticamente al arrancar. Si es `false`, el administrador debe abrirla desde el panel. |
-| `DEV_RELOAD` | `false` | Recarga automática de Uvicorn al cambiar el código. Solo aplica con `python3 -m src.main`. |
+| `ADMIN_PASSWORD` | `admin1234` | Contraseña en texto plano. Se ignora si existe `ADMIN_PASSWORD_HASH`. |
+| `SECRET_KEY` | Aleatoria si no se define | Firma la sesión del administrador. [Ver explicación](#4-secret_key). **No cifra los votos.** |
+| `SESSION_MAX_AGE_SECONDS` | `28800` | Duración de la sesión desde el inicio de sesión. `28800` = 8 horas. Al vencer, hay que iniciar sesión otra vez. |
+| `AUTO_OPEN_POLLS` | `true` | Abre la urna automáticamente al arrancar. Si es `false`, se abre desde el panel. |
+| `DEV_RELOAD` | `false` | Reinicia el servidor al cambiar archivos `.py`. Solo aplica con `python3 -m src.main`. [Ver explicación](#5-uvicorn-y-dev_reload). |
 | `HOST` | `127.0.0.1` | Dirección donde escucha el servidor. Solo aplica con `python3 -m src.main`. |
 | `PORT` | `8000` | Puerto del servidor. Solo aplica con `python3 -m src.main`. |
 
@@ -37,123 +33,121 @@ El cargador es sencillo: una variable por línea, con la forma `CLAVE=valor`. Lo
 
 | Variable | Qué hace |
 |---|---|
-| `ADMIN_PASSWORD_HASH` | Hash PBKDF2 de la contraseña. Si existe, reemplaza a `ADMIN_PASSWORD`. |
-| `DATABASE_URL` | Ruta de la base de datos. Por defecto usa `e_voting.db` en la raíz del proyecto. |
+| `ADMIN_PASSWORD_HASH` | Huella PBKDF2 de la contraseña. Si existe, reemplaza a `ADMIN_PASSWORD`. [Ver explicación](#3-admin_password_hash). |
+| `DATABASE_URL` | URL de conexión de SQLAlchemy. Por defecto usa SQLite en `e_voting.db`, en la raíz del proyecto. |
 | `ELECTION_MODE` | Modalidad inicial: `national` o `university`. Por defecto, `national`. |
 
-## 3. Cambiar la contraseña del administrador
+Las variables opcionales pueden quedarse comentadas; la aplicación usa sus valores por defecto.
 
-### Opción simple
+## 3. `ADMIN_PASSWORD_HASH`
 
-Edita `.env`:
+`ADMIN_PASSWORD_HASH` es una huella de la contraseña del administrador, no la contraseña. Se genera con PBKDF2-SHA256 y no se puede convertir de vuelta a la contraseña. Sirve para no guardar la contraseña en texto plano.
 
-```env
-ADMIN_PASSWORD=mi-nueva-contraseña
-```
+La sal es un valor aleatorio que se guarda junto al hash. Las repeticiones hacen el cálculo lento a propósito, para dificultar los ataques de fuerza bruta.
 
-Reinicia la aplicación y entra con el usuario `admin` y esa contraseña.
+Si `ADMIN_PASSWORD_HASH` está definido, el servidor lo usa e **ignora `ADMIN_PASSWORD`**. Si no está definido, usa `ADMIN_PASSWORD` en texto plano. No es una firma ni tiene relación con `SECRET_KEY`: solo comprueba la contraseña al iniciar sesión.
 
-Si tienes `ADMIN_PASSWORD_HASH` definido, elimínalo o coméntalo; el hash tiene prioridad.
+### Cómo generarlo
 
-### Opción con hash
-
-Genera el hash:
+1. Ejecuta:
 
 ```bash
 ./venv/bin/python scripts/hash_password.py "mi-nueva-contraseña"
 ```
 
-Copia el resultado en `.env`:
+2. Copia el resultado completo. Se ve como `sal$huella`, no como la contraseña.
+
+3. En `.env`, define:
 
 ```env
 ADMIN_PASSWORD_HASH=el_resultado_del_comando
 ```
 
-Elimina o comenta `ADMIN_PASSWORD` para no dejar la contraseña en texto plano. Reinicia la aplicación.
+4. Comenta o elimina `ADMIN_PASSWORD` para no dejar la contraseña en texto plano. Reinicia la aplicación.
+
+El hash se lee de `.env` al arrancar y no se guarda en la base de datos. Si el hash está mal formado, el inicio de sesión falla.
 
 ## 4. `SECRET_KEY`
 
-`SECRET_KEY` es la clave con la que el servidor firma la cookie del administrador. La cookie contiene algo como `admin:<fecha de expiración>` y una firma HMAC-SHA256. En cada petición, el servidor comprueba que la firma sea válida.
+`SECRET_KEY` es una clave secreta del servidor. Se usa para firmar la sesión del administrador; no cifra los votos, no es la contraseña y no es la firma de los jurados.
 
-En corto:
+Cuando el administrador inicia sesión, el servidor crea una credencial con `admin:<hora de vencimiento>`, le calcula una firma con `SECRET_KEY` y la guarda en una **cookie**: un dato que el navegador guarda y envía en cada petición. En cada petición, el servidor comprueba la firma y la hora.
 
-- **No cifra los votos.**
-- **No cifra la base de datos.**
-- **No es la contraseña del administrador.**
-- **Sirve para que nadie falsifique una sesión de administrador.**
+HMAC-SHA256 es una firma con clave: detecta si el contenido cambió, pero no lo cifra.
 
-Si alguien conoce `SECRET_KEY`, puede fabricar una cookie de administrador válida. Por eso debe mantenerse privada.
+Cada inicio de sesión genera una firma distinta porque cambia la hora de vencimiento. No es una firma personal del administrador: es la firma del servidor sobre esa sesión. Solo hay una cuenta de administrador.
 
-### Qué pasa si la cambias
+`SECRET_KEY` no usa la cédula del administrador. Si alguien conoce la clave, puede fabricar una credencial válida; por eso debe mantenerse privada.
 
-- Las sesiones de administrador abiertas dejan de ser válidas.
-- Tienes que volver a iniciar sesión.
-- No se pierden votos, censo ni resultados.
-- El cambio no se aplica hasta reiniciar la aplicación.
+- Si la clave está fija, las sesiones sobreviven a los reinicios hasta su vencimiento.
+- Si la cambias, las sesiones abiertas dejan de ser válidas.
+- Si falta, se genera una clave aleatoria en cada arranque.
+- Si copias `.env.example`, cambia el valor de ejemplo por una clave real.
 
-Si `SECRET_KEY` no está definida, el sistema genera una clave aleatoria nueva en cada arranque. En local funciona, pero cada reinicio invalida las sesiones anteriores.
+Con el valor por defecto, la sesión vence 8 horas después del inicio de sesión, no por inactividad. Al vencer, hay que iniciar sesión otra vez; no se pierden votos ni datos.
 
 ### Cómo cambiarla
 
-1. Genera una clave nueva:
+Genera una clave:
 
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-2. Copia la cadena que aparece en la terminal.
-
-3. Abre `.env` y busca la línea:
-
-```env
-SECRET_KEY=cambia-esta-clave-por-una-aleatoria
-```
-
-4. Reemplaza toda la línea por:
+Cópiala en `.env`:
 
 ```env
 SECRET_KEY=la_cadena_que_imprimio_el_comando
 ```
 
-Debe quedar una sola línea `SECRET_KEY`, sin comillas y sin espacios alrededor del `=`.
+Reinicia la aplicación y vuelve a entrar. No pongas la clave en `settings.py` ni en otro archivo de código: `.env` se lee al arrancar.
 
-5. Guarda `.env` y reinicia la aplicación:
-
-```bash
-python3 -m src.main
-```
-
-6. Vuelve a entrar al panel con `admin` y tu contraseña.
-
-No pegues la clave en `settings.py` ni en otro archivo de código: el archivo `.env` se lee automáticamente al arrancar.
+> Las "firmas de jurados" del acta son códigos fijos de la simulación; no usan `SECRET_KEY` ni se guardan en la base de datos.
 
 ## 5. Uvicorn y `DEV_RELOAD`
 
-Uvicorn es el servidor web que ejecuta FastAPI. FastAPI define las rutas; Uvicorn escucha en un puerto y recibe las peticiones HTTP.
+Uvicorn es el servidor que mantiene la aplicación encendida y escuchando en el puerto. FastAPI define las rutas; Uvicorn recibe las peticiones.
 
-La forma recomendada para la demo es:
+Arranca la demo con:
 
 ```bash
 python3 -m src.main
 ```
 
-Ese comando ya arranca Uvicorn internamente y usa `HOST`, `PORT` y `DEV_RELOAD` de `.env`.
+Ese comando usa `HOST`, `PORT` y `DEV_RELOAD` de `.env`.
 
-La alternativa directa es:
+Si ejecutas `uvicorn src.main:app --host ... --port ...` directamente, esos valores de `.env` no se usan; mandan los argumentos del comando.
+
+`DEV_RELOAD=true` reinicia el servidor cuando guardas un archivo `.py`. No recarga solo el frontend: reinicia el backend completo. Es útil para desarrollar, pero para la demo déjalo en `false`: al reiniciar se pierde el estado en memoria (por ejemplo, si la urna estaba cerrada) y, con `AUTO_OPEN_POLLS=true`, la urna se vuelve a abrir. Los votos guardados en la base no se pierden.
+
+## 6. Scripts de apoyo
+
+Son opcionales. Ejecútalos desde la raíz con el entorno virtual activo y, preferiblemente, con la aplicación detenida.
+
+- `reset_db.py`: borra votos, participaciones y censo, y vuelve a sembrar el censo sintético. La base queda **sin votos, pero con las personas de demostración**.
+- `cast_demo_votes.py`: usa el censo existente y emite votos de prueba con el flujo de la cabina. **No agrega personas.** Rota entre los candidatos y cada sexto elector vota en blanco.
+- `hash_password.py`: genera el hash para `ADMIN_PASSWORD_HASH`. No toca la base.
+
+Para una demo limpia:
 
 ```bash
-uvicorn src.main:app --host 127.0.0.1 --port 8000
+./venv/bin/python scripts/reset_db.py
+./venv/bin/python scripts/cast_demo_votes.py
+python3 -m src.main
 ```
 
-En ese caso, `HOST`, `PORT` y `DEV_RELOAD` de `.env` se ignoran; mandan los argumentos de Uvicorn. Si quieres recarga automática con este comando, añade `--reload`.
+Para modo universitario:
 
-`DEV_RELOAD=true` reinicia el servidor cada vez que guardas un archivo `.py`. Es útil para desarrollar, pero para una demo es mejor `false`, porque al reiniciar se pierde el estado en memoria y, si `AUTO_OPEN_POLLS=true`, la urna se vuelve a abrir.
+```bash
+ELECTION_MODE=university ./venv/bin/python scripts/cast_demo_votes.py
+```
 
-## 6. Seguridad para la demo
+> `reset_db.py` no es lo mismo que **Reiniciar jornada**: el botón conserva el censo; el script lo borra y lo vuelve a sembrar.
 
-- Usa solo datos sintéticos; no cargues datos personales reales.
+## 7. Seguridad para la demo
+
+- Usa solo datos sintéticos.
 - `HOST=127.0.0.1` limita el acceso a tu equipo. No uses `0.0.0.0` sin TLS y protecciones adicionales.
-- Si vas a exponer la aplicación fuera de tu computador, cambia `ADMIN_PASSWORD` y `SECRET_KEY`.
-- `APP_ENV=production` no activa protecciones adicionales; hoy es solo una etiqueta.
+- Si vas a exponer la aplicación fuera de tu computador, cambia la contraseña (mejor con `ADMIN_PASSWORD_HASH`) y `SECRET_KEY`.
 
 Para el recorrido completo de la plataforma, consulta el [manual de uso](manual_de_uso.md).
