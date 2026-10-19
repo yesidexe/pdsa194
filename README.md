@@ -82,7 +82,9 @@ En palabras simples:
 
 ---
 
-## 4. Documentación por Patrón
+## 4. Documentación
+
+> La documentación completa está en el archivo [doc_completa](docs/doc_completa.docx).
 
 La plataforma se organizó con **12 patrones de diseño** agrupados en ocho documentos. Cada documento explica el problema, la solución, su diagrama y la relación con el código. El detalle técnico vive allí, no en este README.
 
@@ -119,7 +121,7 @@ No necesitas crear `.env` para la demo.
 | Rol | Documento / usuario | Clave |
 |---|---|---|
 | Administrador | `admin` | `admin1234` |
-| Elector CNE | `10203040`, `50607080`, `70809010` | PIN `1234` |
-| Elector UDI | `EST-2024`, `EST-9012`, `EST-3341` | PIN `1234` |
+| Elector CNE (CC) | `10203040`, `50607080`, `70809010` | PIN `1234` |
+| Elector UDI (ID) | `EST-2024`, `EST-9012`, `EST-3341` | PIN `1234` |
 
-> Para una configuración mas profunda, como cambiar las variables de `.env` es necesario consultar el archivo de [Configuración](docs/configuracion.md).
+> Para cambiar las variables de `.env` o revisar la configuración, consulta el archivo de [Configuración y seguridad](docs/configuracion.md).
