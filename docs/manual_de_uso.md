@@ -72,7 +72,7 @@ Si algo falla, se muestra un mensaje sin revelar si el documento existe o no.
 
 Una vez verificado, el elector ve el tarjetón oficial con los candidatos y la opción de **Voto en Blanco**.
 
-[Selección del tarjetón](capturas/02_seleccion_tarjeton.png)
+![Selección del tarjetón](capturas/02_seleccion_tarjeton.png)
 
 *Figura 2. Selección del tarjetón y voto en blanco.*
 
@@ -84,7 +84,7 @@ Una vez verificado, el elector ve el tarjetón oficial con los candidatos y la o
 
 Al confirmar, se muestra un comprobante con:
 
-[Comprobante digital del voto](capturas/03_comprobante.png)
+![Comprobante digital del voto](capturas/03_comprobante.png)
 
 *Figura 3. Comprobante digital del voto.*
 
@@ -99,7 +99,7 @@ El comprobante no contiene el documento del votante.
 
 El enlace **Ver resultados en vivo** lleva al dashboard:
 
-[Panel público de resultados en vivo](capturas/04_resultados_publicos.png)
+![Panel público de resultados en vivo](capturas/04_resultados_publicos.png)
 
 *Figura 4. Panel público de resultados en vivo.*
 
