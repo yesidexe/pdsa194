@@ -1,10 +1,12 @@
-"""Reinicia la base local y vuelve a sembrar el censo sintético de demostración.
+"""Deja la base local limpia y vuelve a sembrar el censo de demostración.
 
 Uso:
     ./venv/bin/python scripts/reset_db.py
 
-Borra votos, participaciones y censo; no toca archivos del proyecto.
-Haz un backup antes si tienes datos que quieras conservar.
+Borra votos, participaciones y censo; luego recrea las tablas y vuelve a
+insertar el censo sintético. La base no queda vacía: queda sin votos, pero
+con las personas de demostración. No toca archivos del proyecto.
+Ejecútalo con la aplicación detenida.
 """
 from __future__ import annotations
 

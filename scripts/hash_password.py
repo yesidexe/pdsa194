@@ -1,10 +1,11 @@
-"""Genera un hash PBKDF2 para la contraseña del administrador.
+"""Genera el hash PBKDF2 de la contraseña del administrador.
 
 Uso:
     ./venv/bin/python scripts/hash_password.py "mi-clave"
 
-Copia el resultado en .env como ADMIN_PASSWORD_HASH=... y elimina
-ADMIN_PASSWORD del archivo.
+El resultado tiene el formato salt$hash. Cópialo en .env como
+ADMIN_PASSWORD_HASH=... y elimina o comenta ADMIN_PASSWORD.
+No toca la base de datos ni arranca la aplicación.
 """
 from __future__ import annotations
 
