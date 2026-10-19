@@ -72,7 +72,7 @@ Si algo falla, se muestra un mensaje sin revelar si el documento existe o no.
 
 Una vez verificado, el elector ve el tarjetón oficial con los candidatos y la opción de **Voto en Blanco**.
 
-![Selección del tarjetón](capturas/02_seleccion_tarjeton.png)
+![Selección del tarjetón y voto en blanco](capturas/02_seleccion_tarjeton.png)
 
 *Figura 2. Selección del tarjetón y voto en blanco.*
 
@@ -88,10 +88,10 @@ Al confirmar, se muestra un comprobante con:
 
 *Figura 3. Comprobante digital del voto.*
 
-- Código de recibo.
-- Identificador anónimo de la papeleta.
+- Código de verificación.
+- ID de papeleta anónima.
 - Sello de tiempo UTC.
-- Sello de integridad HMAC-SHA256.
+- Firma HMAC-SHA256 (integridad).
 
 El comprobante no contiene el documento del votante.
 
@@ -109,7 +109,7 @@ El enlace **Ver resultados en vivo** lleva al dashboard:
 - Porcentaje de participación.
 - Desglose por candidato y voto en blanco.
 
-El dashboard se actualiza cada cinco segundos.
+El dashboard se actualiza cada 5 segundos.
 
 ---
 
@@ -159,7 +159,7 @@ Al generar el acta, el panel muestra:
 - Votos en blanco.
 - Veredicto según la regla de la modalidad.
 - Sello SHA-256 del acta.
-- Firmas de jurados registradas.
+- Firmas de jurados de la simulación.
 
 ---
 
