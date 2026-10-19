@@ -1,39 +1,19 @@
 # Manual de uso de la plataforma electoral
 
-> **Entorno:** simulación local con datos sintéticos.
-> **Comando oficial:** `python3 -m src.main`
-> **Objetivo:** mostrar cómo se usa la plataforma de principio a fin y servir como evidencia de funcionamiento.
-
----
-
 ## 1. Antes de empezar
 
-### Requisitos
-
-- Python 3.12 o superior.
-- Entorno virtual activo.
-- Dependencias instaladas:
+Asegúrate de tener Python 3.12 o superior. Activa el entorno virtual e instala las dependencias:
 
 ```bash
 source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Configuración: `.env` y `.env.example`
+### 1.1 Configuración del entorno
 
-- `.env.example` es la **plantilla** que se versiona en el repositorio.
-- `.env` es tu **configuración real** y está en `.gitignore` (no se sube).
-- Para crearla:
+Si necesitas cambiar credenciales o revisar las variables de entorno, consulta [Configuración y seguridad](configuracion.md). Si no, continúa con el arranque.
 
-```bash
-cp .env.example .env
-```
-
-Si no existe `.env`, la aplicación arranca con valores locales por defecto.
-
-Para cambiar credenciales, `SECRET_KEY` o revisar cada variable, consulta [Configuración y seguridad](configuracion.md).
-
-### Arranque
+### 1.2 Arranque
 
 Desde la raíz del proyecto:
 
@@ -41,7 +21,7 @@ Desde la raíz del proyecto:
 python3 -m src.main
 ```
 
-La aplicación queda disponible en:
+La aplicación queda disponible en los siguientes módulos:
 
 | Módulo | URL |
 |---|---|
@@ -50,7 +30,9 @@ La aplicación queda disponible en:
 | Acceso administrativo | http://127.0.0.1:8000/admin/login |
 | Documentación de la API | http://127.0.0.1:8000/docs |
 
-### Credenciales de demostración
+### 1.3 Credenciales de demostración
+
+Con estas credenciales sintéticas puedes iniciar sesión en la cabina de votación o en el acceso administrativo.
 
 - **Administrador:** usuario `admin` y contraseña definida en `.env` (por defecto `admin1234`).
 - **Electores:** todos usan el PIN `1234`.
@@ -70,11 +52,11 @@ La aplicación queda disponible en:
 
 ### 2.1 Identificación
 
-El elector abre la cabina, escribe su documento y su PIN, y pulsa **Verificar elector**.
+El elector abre la cabina, escribe su documento dependiendo de la elección que esté habilitada en ese momento, sea UDI o CNE, junto con su respectivo PIN, y pulsa **Verificar elector**.
 
 ![Cabina de votación: identificación del elector](capturas/01_cabina.png)
 
-*Figura 1. Pantalla inicial de la cabina con documento y PIN.*
+*Figura 1. Cabina de votación: identificación del elector.*
 
 El sistema valida:
 
@@ -90,6 +72,10 @@ Si algo falla, se muestra un mensaje sin revelar si el documento existe o no.
 
 Una vez verificado, el elector ve el tarjetón oficial con los candidatos y la opción de **Voto en Blanco**.
 
+<!-- Captura pendiente: reemplazar este comentario por ![Selección del tarjetón](capturas/02_seleccion_tarjeton.png) -->
+
+*Figura 2. Selección del tarjetón y voto en blanco.*
+
 - Puede seleccionar un candidato o el voto en blanco.
 - El botón **Confirmar y emitir sufragio** se habilita solo cuando hay una selección.
 - El servidor recibe únicamente el identificador de la opción; el nombre y el partido los resuelve el sistema.
@@ -97,6 +83,10 @@ Una vez verificado, el elector ve el tarjetón oficial con los candidatos y la o
 ### 2.3 Comprobante
 
 Al confirmar, se muestra un comprobante con:
+
+<!-- Captura pendiente: reemplazar este comentario por ![Comprobante digital del voto](capturas/03_comprobante.png) -->
+
+*Figura 3. Comprobante digital del voto.*
 
 - Código de recibo.
 - Identificador anónimo de la papeleta.
@@ -108,6 +98,10 @@ El comprobante no contiene el documento del votante.
 ### 2.4 Resultados públicos
 
 El enlace **Ver resultados en vivo** lleva al dashboard:
+
+<!-- Captura pendiente: reemplazar este comentario por ![Panel público de resultados en vivo](capturas/04_resultados_publicos.png) -->
+
+*Figura 4. Panel público de resultados en vivo.*
 
 - Estado de la urna.
 - Total de sufragios.
@@ -125,37 +119,30 @@ El dashboard se actualiza cada cinco segundos.
 
 La ruta `/admin` redirige a `/admin/login` si no hay sesión.
 
-![Acceso administrativo](capturas/02_admin_login.png)
+![Acceso al panel administrativo](capturas/05_admin_login.png)
 
-*Figura 2. Pantalla de acceso al panel administrativo.*
+*Figura 5. Acceso al panel administrativo.*
 
 El acceso usa una única cuenta local. La sesión se guarda en una cookie `HttpOnly`; el JavaScript del panel no ve el valor de la sesión.
 
-### 3.2 ¿Cerrar la urna o generar el acta?
-
-Son dos acciones distintas, aunque el botón principal haga las dos:
-
-| Acción | Qué hace | ¿Se puede deshacer? |
-|---|---|---|
-| **Cerrar urna** | Bloquea nuevos votos. No cuenta ni sella nada. | Sí: se puede volver a abrir si no se generó acta. |
-| **Generar acta** | Cierra la urna, cuenta los votos, calcula el ganador y aplica el sello SHA-256. | No: la jornada queda escrutada; para repetir hay que **Reiniciar jornada**. |
-
-La expresión “aún no finalizar” no aplica aquí: **el acta es la finalización**. Después de generarla, la urna queda cerrada y escrutada; el botón de abrir se desactiva. Si necesitas seguir probando, usa **Reiniciar jornada**, que borra los votos pero conserva el censo.
-
-### 3.2 Funciones disponibles
+### 3.2 Funciones del panel
 
 | Función | Qué hace |
 |---|---|
 | **Cambiar modalidad** | Alterna entre Elección Nacional y Universitaria. Los votos de cada modalidad se conservan por separado. |
-| **Control de urna** | Abre o cierra la jornada. |
-| **Cierre y acta** | Cierra la urna, cuenta los votos y genera el acta con sello SHA-256. |
-| **Reiniciar jornada** | Borra todas las papeletas y participaciones de la elección activa; **conserva el censo**. |
+| **Control de urna** | Abre o cierra la jornada. Cerrar bloquea nuevos votos; si no se generó acta, se puede volver a abrir. |
+| **Cierre y acta** | Cierra la urna, cuenta los votos, calcula el ganador y aplica el sello SHA-256. No se puede deshacer. |
+| **Reiniciar jornada** | Borra los votos y participaciones de la elección activa; **conserva el censo**. |
 | **Censo electoral** | Lista, inscribe, actualiza y habilita/inhabilita electores. |
 | **Bitácora** | Muestra los eventos de verificación, emisión, apertura, cierre, acta y reset. |
 
-![Panel administrativo: estado de urna, cierre y acta](capturas/04_admin_panel.png)
+> El acta es la finalización de la jornada: después de generarla, la urna queda cerrada y escrutada. Para repetir, usa **Reiniciar jornada**.
 
-*Figura 3. Panel administrativo con el estado de la urna y las acciones de cierre, acta y reinicio.*
+> No existe un borrado de voto individual: eso obligaría a vincular identidad y papeleta.
+
+![Panel administrativo: estado de la urna, cierre y acta](capturas/06_admin_panel.png)
+
+*Figura 6. Panel administrativo: estado de la urna, cierre y acta.*
 
 ### 3.3 Actualización automática
 
@@ -163,17 +150,7 @@ La expresión “aún no finalizar” no aplica aquí: **el acta es la finalizac
 - El dashboard se refresca cada **5 segundos** y cambia su botón de cabina por “Urna cerrada” cuando la jornada está bloqueada.
 - El panel administrativo refresca estado, censo y bitácora cada **10 segundos**, sin necesidad de pulsar “Actualizar”.
 
-### 3.3 Reiniciar la jornada
-
-El botón **Reiniciar jornada** es la forma correcta de volver a probar el flujo:
-
-- Borra **todos** los votos y participaciones de la elección activa.
-- **No** borra el censo.
-- **No** permite borrar el voto de una persona concreta, porque eso obligaría a vincular identidad y papeleta.
-
-Para probar con un elector distinto sin borrar la jornada, basta con usar otro documento del censo.
-
-### 3.4 Acta de escrutinio
+### 3.4 Qué muestra el acta
 
 Al generar el acta, el panel muestra:
 
@@ -186,41 +163,7 @@ Al generar el acta, el panel muestra:
 
 ---
 
-## 4. Evidencias de funcionamiento
-
-| Evidencia | Archivo | Qué muestra |
-|---|---|---|
-| Cabina de votación | `capturas/01_cabina.png` | Identificación con documento + PIN, indicador de pasos y estado de la urna. |
-| Acceso administrativo | `capturas/02_admin_login.png` | Protección del panel y cuenta única local. |
-| Cabina en móvil | `capturas/03_cabina_movil.png` | Diseño responsive: formulario en una columna y stepper compacto. |
-| Panel administrativo | `capturas/04_admin_panel.png` | Estado de urna, cierre, acta, reset y censo con el rediseño. |
-
-> Para completar la evidencia, puedes añadir capturas propias del dashboard y del panel administrativo autenticado en la misma carpeta `capturas/`.
-
----
-
-## 5. Comandos útiles
-
-```bash
-# Reiniciar la base de demostración (borra votos, participaciones y censo)
-./venv/bin/python scripts/reset_db.py
-
-# Generar votos de demostración en modo nacional
-./venv/bin/python scripts/cast_demo_votes.py
-
-# Generar votos de demostración en modo universitario
-ELECTION_MODE=university ./venv/bin/python scripts/cast_demo_votes.py
-
-# Ejecutar pruebas
-pytest -q
-
-# Generar hash de contraseña de administrador (opcional)
-./venv/bin/python scripts/hash_password.py "mi-clave"
-```
-
----
-
-## 6. Solución de problemas
+## 4. Solución de problemas
 
 | Síntoma | Causa probable | Solución |
 |---|---|---|
@@ -231,16 +174,4 @@ pytest -q
 | El dashboard muestra 0 votos | La jornada se reinició o no hay votos | Emitir votos de prueba o ejecutar el script de demostración. |
 | Error de base de datos bloqueada | Demasiadas escrituras simultáneas en SQLite | Reintentar; para producción se recomienda PostgreSQL. |
 
----
-
-## 7. Alcance y límites
-
-Esta plataforma es un **simulador local**:
-
-- Usa datos sintéticos.
-- La autenticación del elector es básica (documento + PIN de demostración).
-- El sello HMAC sirve para aprender integridad, pero no es una firma digital asimétrica.
-- La bitácora vive en memoria y se reinicia con el proceso.
-- No está certificada para elecciones reales.
-
-Estas limitaciones están documentadas para que la demostración sea honesta y para dejar claro qué se necesitaría antes de un despliegue real.
+**Verificación rápida:** `pytest -q`
