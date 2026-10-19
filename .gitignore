@@ -1,5 +1,7 @@
 # Documentación Interna / Notas
-docs/
+# Las guías evaluativas en PDF se mantienen fuera del repositorio.
+docs/guias/
+backups/
 
 # Bases de Datos Locales
 *.db

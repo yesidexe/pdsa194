@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 
 @dataclass(frozen=True)
 class CandidateMetadataFlyweight:
-    """Estado intrínseco e inmutable compartido entre todos los votos emitidos para un candidato."""
+    """Estado intrínseco e inmutable compartido en el catálogo de candidatos."""
     candidate_id: str
     candidate_name: str
     party_name: str

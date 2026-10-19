@@ -1,69 +1,79 @@
-"""Módulo API REST con FastAPI para la plataforma de votación electrónica."""
+"""API REST local de la plataforma electoral.
+
+Las operaciones de administración exigen una cookie de sesión firmada; el
+elector se autentica con documento + PIN. Las respuestas de error no exponen
+detalles internos de la base de datos.
+"""
 from __future__ import annotations
-from typing import Any, Dict, List, Optional, Union
-from fastapi import FastAPI, HTTPException, status
+
+from typing import Any, Dict, List, Literal, Optional, Union
+
+from fastapi import Depends, FastAPI, HTTPException, Response, status
 from pydantic import BaseModel, Field
 
-from src.modules.facade.voting_facade import VotingSystemFacade
-from src.modules.security.access_proxy import ElectoralAccessProxy, UserSession, UserRole
-from src.modules.voting.candidate_flyweight import CandidateFlyweightFactory
+from src.core.settings import SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS
 from src.modules.census.census_adapter import SqliteCensusAdapter
+from src.modules.security.access_proxy import ElectoralAccessProxy, UserSession
+from src.modules.voting.candidate_flyweight import CandidateFlyweightFactory
+from src.modules.voting.vote_store import AlreadyVotedError
+from src.presentation.auth import (
+    create_session_token,
+    require_admin_session,
+    verify_admin_credentials,
+)
 
 
 # -------------------------------------------------------------------------
-# Modelos Pydantic para Validación de Esquemas (Nivel de Módulo)
+# Modelos de entrada
 # -------------------------------------------------------------------------
+_DOC_PATTERN = r"^[A-Za-z0-9-]{5,20}$"
+_PIN_PATTERN = r"^\d{4,8}$"
+
+
 class VerifyVoterRequest(BaseModel):
-    document_id: str = Field(..., description="Cédula o código de identificación del votante", examples=["10203040"])
+    document_id: str = Field(..., pattern=_DOC_PATTERN, examples=["10203040"])
+    pin: str = Field(..., pattern=_PIN_PATTERN, examples=["1234"])
+
 
 class CastVoteRequest(BaseModel):
-    document_id: str = Field(..., description="Cédula del votante habilitado", examples=["10203040"])
-    ballot_type: str = Field("candidate", description="'candidate', 'referendum' o 'blank'", examples=["candidate"])
-    selection: Dict[str, Any] = Field(
-        ...,
-        description="Metadatos de la selección (candidato, pregunta o categoría)",
-        examples=[{"candidate_id": "CAND-01", "candidate_name": "Gabriel Silva", "party_name": "Pact E-Col"}],
-    )
-    security_layers: List[str] = Field(
-        default=["timestamp", "signature", "watermark"],
-        description="Capas de seguridad a aplicar",
-        examples=[["timestamp", "signature", "watermark"]],
-    )
+    document_id: str = Field(..., pattern=_DOC_PATTERN, examples=["10203040"])
+    pin: str = Field(..., pattern=_PIN_PATTERN, examples=["1234"])
+    ballot_type: Literal["candidate", "blank", "referendum"] = Field("candidate")
+    selection: Dict[str, Any] = Field(default_factory=dict)
+    # Se conserva por compatibilidad, pero el servidor ya no confía en este campo.
+    security_layers: Optional[List[str]] = None
 
-class AdminSessionRequest(BaseModel):
-    user_id: str = Field("ADMIN-01", examples=["ADMIN-01"])
-    session_token: str = Field("TOKEN-ADMIN-MASTER-2026", examples=["TOKEN-ADMIN-MASTER-2026"])
+
+class AdminLoginRequest(BaseModel):
+    username: str = Field(..., min_length=1, max_length=50)
+    password: str = Field(..., min_length=1, max_length=200)
+
 
 class SwitchElectionModeRequest(BaseModel):
-    mode: str = Field("national", description="'national' o 'university'", examples=["university"])
-    user_id: str = Field("ADMIN-01", examples=["ADMIN-01"])
-    session_token: str = Field("TOKEN-ADMIN-MASTER-2026", examples=["TOKEN-ADMIN-MASTER-2026"])
+    mode: Literal["national", "university"]
+
 
 class GenerateTallyRequest(BaseModel):
     officer_signatures: List[str] = Field(
-        default=["JURADO-FIRMA-MESA-01", "JURADO-FIRMA-MESA-02"],
-        examples=[["JURADO-FIRMA-MESA-01", "JURADO-FIRMA-MESA-02"]],
+        default_factory=lambda: ["JURADO-FIRMA-MESA-01", "JURADO-FIRMA-MESA-02"]
     )
-    user_id: str = Field("ADMIN-01", examples=["ADMIN-01"])
-    session_token: str = Field("TOKEN-ADMIN-MASTER-2026", examples=["TOKEN-ADMIN-MASTER-2026"])
+
 
 class RegisterVoterRequest(BaseModel):
-    document_id: str = Field(..., description="Cédula o carnet estudiantil a inscribir")
-    full_name: str = Field(..., description="Nombre completo legal del elector")
-    assigned_station_id: str = Field("MESA-01", description="Mesa asignada")
-    is_eligible: bool = Field(True, description="Estado legal (True=Habilitado, False=Inhabilitado)")
-    election_type: Optional[str] = Field(None, description="'NATIONAL' o 'UNIVERSITY'")
-    user_id: str = Field("ADMIN-01")
-    session_token: str = Field("TOKEN-ADMIN-MASTER-2026")
+    document_id: str = Field(..., pattern=_DOC_PATTERN, examples=["10998877"])
+    full_name: str = Field(..., min_length=3, max_length=150, examples=["Marcela Gómez"])
+    assigned_station_id: str = Field("MESA-01", pattern=r"^[A-Za-z0-9-]{3,20}$")
+    is_eligible: bool = True
+    pin: str = Field("1234", pattern=_PIN_PATTERN)
+    election_type: Optional[Literal["NATIONAL", "UNIVERSITY"]] = None
+
 
 class ToggleEligibilityRequest(BaseModel):
-    is_eligible: bool = Field(..., description="Nuevo estado de habilitación política")
-    user_id: str = Field("ADMIN-01")
-    session_token: str = Field("TOKEN-ADMIN-MASTER-2026")
+    is_eligible: bool
 
 
 class ElectoralSystemHolder:
-    """Contenedor de estado que permite conmutar la instancia del sistema en caliente."""
+    """Contenedor de estado que permite conmutar la instancia del sistema."""
 
     def __init__(self, proxy: ElectoralAccessProxy, mode: str = "national") -> None:
         self.proxy: ElectoralAccessProxy = proxy
@@ -74,37 +84,69 @@ class ElectoralSystemHolder:
         return self.proxy
 
 
-def _authenticate_admin(user_id: str, session_token: str) -> UserSession:
-    """Verifica si el token corresponde al perfil de Administrador."""
-    if session_token == "TOKEN-ADMIN-MASTER-2026":
-        return UserSession(user_id=user_id, role=UserRole.ADMINISTRADOR, session_token=session_token)
-    return UserSession(user_id=user_id, role=UserRole.ELECTOR, session_token=session_token)
-
-
 def create_api_app(target: Union[ElectoralAccessProxy, ElectoralSystemHolder]) -> FastAPI:
     """Fábrica de la aplicación FastAPI conectada al Proxy o Holder de seguridad."""
     if isinstance(target, ElectoralAccessProxy):
         holder = ElectoralSystemHolder(proxy=target, mode="national")
     else:
         holder = target
+
     api = FastAPI(
         title="Plataforma de Votación Electrónica (E-Voting API)",
-        description="API REST de servicios para la plataforma de votación electrónica y censo electoral.",
+        description="API REST local para la simulación de la jornada electoral y el censo.",
         version="2.0.0",
         docs_url="/docs",
         redoc_url="/redoc",
     )
 
+    @api.middleware("http")
+    async def security_headers(request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        return response
+
     # -------------------------------------------------------------------------
-    # Endpoints de la API
+    # Estado y sesión
     # -------------------------------------------------------------------------
     @api.get("/api/health", tags=["Estado"])
     def health_check() -> Dict[str, str]:
-        return {"status": "ONLINE", "system": "E-Voting Platform"}
+        return {"status": "ONLINE", "system": "E-Voting Platform", "mode": holder.current_mode}
 
+    @api.post("/api/admin/login", tags=["Administración"])
+    def admin_login(req: AdminLoginRequest, response: Response) -> Dict[str, str]:
+        """Inicia sesión con la única cuenta administradora configurada."""
+        if not verify_admin_credentials(req.username, req.password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Usuario o contraseña incorrectos.",
+            )
+        response.set_cookie(
+            key=SESSION_COOKIE_NAME,
+            value=create_session_token(),
+            max_age=SESSION_MAX_AGE_SECONDS,
+            httponly=True,
+            samesite="strict",
+            secure=False,  # local HTTP; en producción debe ser True con TLS
+            path="/",
+        )
+        return {"status": "SESION_INICIADA"}
+
+    @api.post("/api/admin/logout", tags=["Administración"])
+    def admin_logout(response: Response) -> Dict[str, str]:
+        response.delete_cookie(SESSION_COOKIE_NAME, path="/")
+        return {"status": "SESION_CERRADA"}
+
+    @api.get("/api/admin/session", tags=["Administración"])
+    def admin_session(session: UserSession = Depends(require_admin_session)) -> Dict[str, str]:
+        return {"status": "AUTENTICADO", "user_id": session.user_id, "role": session.role.value}
+
+    # -------------------------------------------------------------------------
+    # Consulta pública
+    # -------------------------------------------------------------------------
     @api.get("/api/candidates", tags=["Candidatos"])
     def get_candidates_catalog() -> List[Dict[str, Any]]:
-        """Recupera el catálogo de candidatos activos para la votación."""
         candidates = CandidateFlyweightFactory.get_all_candidates()
         return [
             {
@@ -121,55 +163,28 @@ def create_api_app(target: Union[ElectoralAccessProxy, ElectoralSystemHolder]) -
 
     @api.get("/api/dashboard", tags=["Escrutinio"])
     def get_dashboard() -> Dict[str, Any]:
-        """Obtiene métricas consolidadas en tiempo real para visualización."""
         return holder.proxy.get_dashboard_summary()
 
     @api.get("/api/election/mode", tags=["Configuración Electoral"])
     def get_election_mode() -> Dict[str, Any]:
-        """Obtiene la configuración activa de la jornada electoral."""
-        facade = holder.proxy._facade
-        header_str = "Encabezado Oficial"
-        doc_type_str = "Cédula de Ciudadanía"
-        if facade._family_factory is not None:
-            header_str = facade._family_factory.create_header().render_header()
-            doc_type_str = facade._family_factory.create_validator().get_document_type()
-
         return {
             "mode": holder.current_mode,
-            "institution_name": facade._config.institution_name,
-            "election_title": facade._config.election_title,
-            "ballot_header": header_str,
-            "document_type": doc_type_str,
+            "institution_name": holder.proxy.institution_name,
+            "election_title": holder.proxy.election_title,
+            "ballot_header": holder.proxy.ballot_header,
+            "document_type": holder.proxy.document_type,
+            "election_type": holder.proxy.election_type,
             "is_open": holder.proxy.is_voting_open,
+            "is_tallied": holder.proxy.is_tallied,
         }
 
-    @api.post("/api/election/switch-mode", tags=["Configuración Electoral"])
-    def switch_election_mode(req: SwitchElectionModeRequest) -> Dict[str, Any]:
-        """Conmuta el tipo de elección (Nacional vs Universitaria)."""
-        session = _authenticate_admin(req.user_id, req.session_token)
-        if session.role != UserRole.ADMINISTRADOR:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permiso denegado: Requiere rol ADMINISTRADOR.")
-
-        try:
-            new_proxy = holder.switch_mode(req.mode)
-            facade = new_proxy._facade
-            header_str = facade._family_factory.create_header().render_header() if facade._family_factory else ""
-            doc_type_str = facade._family_factory.create_validator().get_document_type() if facade._family_factory else ""
-            return {
-                "status": "MODO_ELECTORAL_ACTUALIZADO",
-                "mode": holder.current_mode,
-                "election_title": facade._config.election_title,
-                "institution_name": facade._config.institution_name,
-                "ballot_header": header_str,
-                "document_type": doc_type_str,
-            }
-        except Exception as e:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
+    # -------------------------------------------------------------------------
+    # Elector
+    # -------------------------------------------------------------------------
     @api.post("/api/auth/verify", tags=["Elector"])
     def verify_voter(req: VerifyVoterRequest) -> Dict[str, Any]:
-        """Verifica si el elector está facultado legalmente para votar en el censo."""
-        result = holder.proxy.verify_voter(req.document_id)
+        """Valida documento + PIN contra el censo y el estado de la jornada."""
+        result = holder.proxy.verify_voter(req.document_id, req.pin)
         if not result.get("is_eligible", False):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -179,46 +194,90 @@ def create_api_app(target: Union[ElectoralAccessProxy, ElectoralSystemHolder]) -
 
     @api.post("/api/votes/cast", tags=["Elector"])
     def cast_vote(req: CastVoteRequest) -> Dict[str, Any]:
-        """Emite el voto, aplica sellos de seguridad y lo almacena anónimamente en la urna."""
+        """Emite un voto validado y persistido; el servidor decide la seguridad."""
         try:
-            receipt = holder.proxy.cast_secure_vote(
+            return holder.proxy.cast_secure_vote(
                 document_id=req.document_id,
+                pin=req.pin,
                 ballot_type=req.ballot_type,
                 selection_kwargs=req.selection,
                 security_layers=req.security_layers,
             )
-            return receipt
-        except PermissionError as e:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
-        except ValueError as e:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-        except Exception as e:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        except AlreadyVotedError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No fue posible registrar el voto. Intente nuevamente.",
+            )
+
+    # -------------------------------------------------------------------------
+    # Administración electoral (requiere cookie)
+    # -------------------------------------------------------------------------
+    @api.post("/api/election/switch-mode", tags=["Administración"])
+    def switch_election_mode(
+        req: SwitchElectionModeRequest,
+        session: UserSession = Depends(require_admin_session),
+    ) -> Dict[str, Any]:
+        try:
+            new_proxy = holder.switch_mode(req.mode)
+            return {
+                "status": "MODO_ELECTORAL_ACTUALIZADO",
+                "mode": holder.current_mode,
+                "election_title": new_proxy.election_title,
+                "institution_name": new_proxy.institution_name,
+                "ballot_header": new_proxy.ballot_header,
+                "document_type": new_proxy.document_type,
+            }
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     @api.post("/api/election/open", tags=["Administración"])
-    def open_election(req: AdminSessionRequest) -> Dict[str, Any]:
-        """Abre la urna electoral para iniciar la jornada de votación."""
-        session = _authenticate_admin(req.user_id, req.session_token)
+    def open_election(session: UserSession = Depends(require_admin_session)) -> Dict[str, Any]:
         try:
             holder.proxy.open_polls(session)
-            return {"status": "JORNADA_ABIERTA", "is_open": holder.proxy.is_voting_open}
-        except PermissionError as e:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+            return {
+                "status": "JORNADA_ABIERTA",
+                "is_open": holder.proxy.is_voting_open,
+                "is_tallied": holder.proxy.is_tallied,
+            }
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
 
     @api.post("/api/election/close", tags=["Administración"])
-    def close_election(req: AdminSessionRequest) -> Dict[str, Any]:
-        """Cierra la urna electoral para finalizar la jornada de votación."""
-        session = _authenticate_admin(req.user_id, req.session_token)
+    def close_election(session: UserSession = Depends(require_admin_session)) -> Dict[str, Any]:
         try:
             holder.proxy.close_polls(session)
             return {"status": "JORNADA_CERRADA", "is_open": holder.proxy.is_voting_open}
-        except PermissionError as e:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+
+    @api.post("/api/admin/reset-election", tags=["Administración"])
+    def reset_election(session: UserSession = Depends(require_admin_session)) -> Dict[str, Any]:
+        """Borra todos los votos de la elección activa y reabre la jornada."""
+        try:
+            removed = holder.proxy.reset_election(session)
+            return {
+                "status": "JORNADA_REINICIADA",
+                "removed_ballots": removed,
+                "mode": holder.current_mode,
+                "is_open": holder.proxy.is_voting_open,
+                "is_tallied": holder.proxy.is_tallied,
+            }
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
 
     @api.post("/api/tally/generate", tags=["Escrutinio"])
-    def generate_official_tally(req: GenerateTallyRequest) -> Dict[str, Any]:
-        """Consolida votos, evalúa ganador y produce acta oficial sellada con firma criptográfica."""
-        session = _authenticate_admin(req.user_id, req.session_token)
+    def generate_official_tally(
+        req: GenerateTallyRequest,
+        session: UserSession = Depends(require_admin_session),
+    ) -> Dict[str, Any]:
         try:
             report = holder.proxy.close_and_generate_tally(
                 session=session,
@@ -237,23 +296,33 @@ def create_api_app(target: Union[ElectoralAccessProxy, ElectoralSystemHolder]) -
                 "signatures": report.officer_signatures,
                 "formatted_summary": report.to_formatted_summary(),
             }
-        except Exception as e:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        except PermissionError as exc:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No fue posible generar el acta.",
+            )
 
     @api.get("/api/security/audit-log", tags=["Auditoría"])
-    def get_proxy_audit_log() -> List[Dict[str, Any]]:
-        """Recupera la bitácora de eventos del sistema de seguridad."""
+    def get_proxy_audit_log(
+        session: UserSession = Depends(require_admin_session),
+    ) -> List[Dict[str, Any]]:
         return holder.proxy.audit_log
 
     # -------------------------------------------------------------------------
-    # Endpoints del Censo Electoral (Persistencia en SQLite)
+    # Censo electoral (requiere cookie)
     # -------------------------------------------------------------------------
     @api.get("/api/census/voters", tags=["Censo Electoral"])
-    def get_census_voters(election_type: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Retorna la lista de ciudadanos registrados en el censo electoral oficial."""
+    def get_census_voters(
+        election_type: Optional[str] = None,
+        session: UserSession = Depends(require_admin_session),
+    ) -> List[Dict[str, Any]]:
         target_mode = election_type or holder.current_mode
-        sqlite_adapter = SqliteCensusAdapter(election_type=target_mode)
-        voters = sqlite_adapter.get_all_voters(target_mode)
+        adapter = SqliteCensusAdapter(election_type=target_mode)
+        voters = adapter.get_all_voters(target_mode)
         return [
             {
                 "document_id": v.document_id,
@@ -266,20 +335,19 @@ def create_api_app(target: Union[ElectoralAccessProxy, ElectoralSystemHolder]) -
         ]
 
     @api.post("/api/census/voters", tags=["Censo Electoral"])
-    def register_census_voter(req: RegisterVoterRequest) -> Dict[str, Any]:
-        """Inscribe o actualiza un ciudadano en el censo electoral oficial."""
-        session = _authenticate_admin(req.user_id, req.session_token)
-        if session.role != UserRole.ADMINISTRADOR:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permiso denegado: Requiere rol ADMINISTRADOR.")
-
-        target_mode = req.election_type or holder.current_mode
-        sqlite_adapter = SqliteCensusAdapter(election_type=target_mode)
-        voter = sqlite_adapter.register_voter(
+    def register_census_voter(
+        req: RegisterVoterRequest,
+        session: UserSession = Depends(require_admin_session),
+    ) -> Dict[str, Any]:
+        target_mode = (req.election_type or holder.current_mode).upper()
+        adapter = SqliteCensusAdapter(election_type=target_mode)
+        voter = adapter.register_voter(
             document_id=req.document_id,
             full_name=req.full_name,
             assigned_station_id=req.assigned_station_id,
             is_eligible=req.is_eligible,
             election_type=target_mode,
+            pin=req.pin,
         )
         return {
             "status": "ELECTOR_REGISTRADO",
@@ -287,17 +355,17 @@ def create_api_app(target: Union[ElectoralAccessProxy, ElectoralSystemHolder]) -
             "full_name": voter.full_name,
             "assigned_station_id": voter.assigned_station_id,
             "is_eligible": voter.is_eligible,
+            "pin": req.pin,
         }
 
     @api.put("/api/census/voters/{document_id}/status", tags=["Censo Electoral"])
-    def toggle_voter_eligibility(document_id: str, req: ToggleEligibilityRequest) -> Dict[str, Any]:
-        """Modifica el estado de habilitación política de un elector en el censo."""
-        session = _authenticate_admin(req.user_id, req.session_token)
-        if session.role != UserRole.ADMINISTRADOR:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permiso denegado: Requiere rol ADMINISTRADOR.")
-
-        sqlite_adapter = SqliteCensusAdapter(election_type=holder.current_mode)
-        success = sqlite_adapter.toggle_eligibility(document_id=document_id, is_eligible=req.is_eligible)
+    def toggle_voter_eligibility(
+        document_id: str,
+        req: ToggleEligibilityRequest,
+        session: UserSession = Depends(require_admin_session),
+    ) -> Dict[str, Any]:
+        adapter = SqliteCensusAdapter(election_type=holder.current_mode)
+        success = adapter.toggle_eligibility(document_id=document_id, is_eligible=req.is_eligible)
         if not success:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Elector no encontrado en el censo.")
         return {
@@ -305,4 +373,5 @@ def create_api_app(target: Union[ElectoralAccessProxy, ElectoralSystemHolder]) -
             "document_id": document_id,
             "is_eligible": req.is_eligible,
         }
+
     return api

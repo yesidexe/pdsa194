@@ -1,6 +1,6 @@
-# Avance Patrón de Diseño Builder
+# Patrón de Diseño Builder
 
-## 1. Identificación del Avance
+## 1. Identificación del patrón
 * **Patrón de Diseño:** Builder (Creacional).
 * **Elemento del Sistema:** Ensamble de Actas Oficiales de Escrutinio (`ElectoralTallyReport`) mediante `TallyReportBuilder` y `OfficialTallyReportBuilder`.
 * **Ubicación del Código:** `src/modules/tally/report_builder.py`.
@@ -18,15 +18,15 @@ Al finalizar una jornada de votación electrónica, el sistema debe generar el *
 * Registro de firmas digitales o códigos de autenticación de los jurados de mesa.
 * Sello criptográfico digital (hash SHA-256) generado sobre el contenido del acta para garantizar inmutabilidad.
 
-### El Antipatrón Evitado: Constructor Telescópico (*Telescoping Constructor*)
+### 2.1 El Antipatrón Evitado: Constructor Telescópico (*Telescoping Constructor*)
 Si intentáramos construir este objeto directamente mediante el constructor de clase `__init__`, caeríamos en el antipatrón de constructor telescópico:
 ```python
 # ANTIPATRÓN: Parámetros confusos, propensos a error de orden y difíciles de mantener
-reporte = ElectoralTallyReport("Elecciones 2026", "Nacional", datetime.now(), ["M-01", "M-02"], {...}, 10, 5, 1200, ["JUR-1", "JUR-2"], "a8fbc...")
+reporte = ElectoralTallyReport("Elecciones 2026", "Nacional", datetime.now, ["M-01", "M-02"], {...}, 10, 5, 1200, ["JUR-1", "JUR-2"], "a8fbc...")
 ```
 El cliente se vería forzado a conocer el orden exacto de decenas de argumentos, muchos de ellos opcionales o dependientes de pasos de cálculo intermedios.
 
-El patrón **Builder** separa el proceso de construcción paso a paso de un objeto complejo de su representación final, permitiendo que el mismo proceso de construcción produzca representaciones válidas e inmutables.
+El patrón **Builder** separa el proceso de construcción paso a paso de un objeto complejo de su representación final, permitiendo que el mismo proceso de construcción produzca representaciones consolidadas.
 
 ---
 
@@ -47,12 +47,12 @@ classDiagram
     %% Builder Abstracto
     class TallyReportBuilder {
         <<abstract>>
-        +reset()* TallyReportBuilder
+        +reset* TallyReportBuilder
         +set_header(election_title, jurisdiction)* TallyReportBuilder
         +add_table_batch(table_ids)* TallyReportBuilder
         +set_votes(candidate_votes, blank_votes, null_votes)* TallyReportBuilder
         +add_officer_signature(signature_code)* TallyReportBuilder
-        +build()* ElectoralTallyReport
+        +build* ElectoralTallyReport
     }
 
     %% Builder Concreto
@@ -64,15 +64,15 @@ classDiagram
         -int _blank_votes
         -int _null_votes
         -List~str~ _officer_signatures
-        +reset() OfficialTallyReportBuilder
+        +reset OfficialTallyReportBuilder
         +set_header(election_title, jurisdiction) OfficialTallyReportBuilder
         +add_table_batch(table_ids) OfficialTallyReportBuilder
         +set_votes(candidate_votes, blank_votes, null_votes) OfficialTallyReportBuilder
         +add_officer_signature(signature_code) OfficialTallyReportBuilder
-        +build() ElectoralTallyReport
+        +build ElectoralTallyReport
     }
 
-    %% Producto Complejo Inmutable
+    %% Producto complejo con campos de solo lectura
     class ElectoralTallyReport {
         +str election_title
         +str jurisdiction
@@ -84,7 +84,7 @@ classDiagram
         +int total_votes
         +List~str~ officer_signatures
         +str integrity_hash
-        +to_formatted_summary() str
+        +to_formatted_summary str
     }
 
     TallyReportDirector o-- TallyReportBuilder : orquesta
@@ -98,12 +98,12 @@ classDiagram
 
 La solución adopta la variante moderna **Fluent Builder** (encadenamiento de métodos) complementada con inmutabilidad en el producto final (`@dataclass(frozen=True)`).
 
-### 4.1 Producto Complejo e Inmutable (`ElectoralTallyReport`)
+### 4.1 Producto complejo con campos de solo lectura (`ElectoralTallyReport`)
 
 ```python
 @dataclass(frozen=True)
 class ElectoralTallyReport:
-    """Producto complejo e inmutable que representa el acta final de escrutinio."""
+    """Producto complejo del acta final de escrutinio (campos de solo lectura)."""
     election_title: str
     jurisdiction: str
     generated_at: datetime
@@ -145,10 +145,9 @@ class TallyReportBuilder(ABC):
     @abstractmethod
     def build(self) -> ElectoralTallyReport: pass
 
-
 class OfficialTallyReportBuilder(TallyReportBuilder):
     def __init__(self) -> None:
-        self.reset()
+        self.reset
 
     def reset(self) -> "OfficialTallyReportBuilder":
         self._election_title = "Jornada Electoral"
@@ -181,14 +180,14 @@ class OfficialTallyReportBuilder(TallyReportBuilder):
         return self
 
     def build(self) -> ElectoralTallyReport:
-        total = sum(self._candidate_votes.values()) + self._blank_votes + self._null_votes
-        now = datetime.utcnow()
+        total = sum(self._candidate_votes.values) + self._blank_votes + self._null_votes
+        now = datetime.utcnow
 
         # Sellado criptográfico automático del estado final
         payload = {
             "title": self._election_title,
             "jurisdiction": self._jurisdiction,
-            "timestamp": now.isoformat(),
+            "timestamp": now.isoformat,
             "tables": sorted(self._table_ids),
             "candidate_votes": self._candidate_votes,
             "blank": self._blank_votes,
@@ -196,7 +195,7 @@ class OfficialTallyReportBuilder(TallyReportBuilder):
             "total": total,
             "signatures": self._officer_signatures,
         }
-        hash_digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
+        hash_digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest
 
         return ElectoralTallyReport(
             election_title=self._election_title,
@@ -212,8 +211,8 @@ class OfficialTallyReportBuilder(TallyReportBuilder):
         )
 ```
 
-### 4.3 Director de Construcción (`TallyReportDirector`)
-Permite automatizar variantes predefinidas del producto, como un boletín preliminar de divulgación rápida:
+### 4.3 Director de Construcción (`TallyReportDirector`) — opcional
+Permite automatizar variantes predefinidas del producto, como un boletín preliminar. En el flujo actual de la plataforma no se utiliza; el acta se arma directamente con el builder.
 
 ```python
 class TallyReportDirector:
@@ -236,12 +235,12 @@ class TallyReportDirector:
 
 ## 5. Análisis de Ingeniería de Software
 
-### 4.1 Inmutabilidad Garantizada
-Al construirse el objeto con `frozen=True`, ninguna propiedad del acta puede modificarse a posteriori en memoria. Si un atacante o error intentara alterar un cómputo, Python generará una excepción inmediata.
+### 5.1 Inmutabilidad parcial del acta
+`frozen=True` impide reasignar los campos del acta, pero las listas y diccionarios internos siguen siendo mutables. Para una inmutabilidad estricta habría que usar tuplas o copias defensivas; hoy el sello SHA-256 permite detectar si el contenido cambió.
 
-### 4.2 Sellado Criptográfico Integrado
-El método `build()` calcula de forma determinista el resumen criptográfico SHA-256 de todas las partes ensambladas. El acta nace sellada digitalmente.
+### 5.2 Sellado Criptográfico Integrado
+El método `build` calcula de forma determinista el resumen criptográfico SHA-256 de todas las partes ensambladas. El acta nace sellada digitalmente.
 
-### 4.3 Relación con Principios SOLID
+### 5.3 Relación con Principios SOLID
 * **Single Responsibility Principle (SRP):** El reporte sólo modela los datos consolidados; el constructor se encarga exclusivamente de las reglas de ensamble, validación de rangos y firmado.
 * **Open/Closed Principle (OCP):** Es posible introducir nuevos formatos de acta (por ejemplo, `AuditedJsonTallyReportBuilder` o `InternationalTallyReportBuilder`) implementando `TallyReportBuilder` sin alterar el código cliente existente.

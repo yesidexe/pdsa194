@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Administrativo | Plataforma Electoral</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/app.css">
+    <style>
+        html, body { margin: 0; padding: 0; box-sizing: border-box; }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-800 font-sans antialiased page-enter">
+    <main class="min-h-screen flex items-center justify-center px-4 py-10">
+        <section class="w-full max-w-md">
+            <div class="text-center mb-7">
+                <div class="w-14 h-14 mx-auto rounded-2xl bg-slate-900 text-white flex items-center justify-center text-xl shadow-sm">
+                    <i class="fa-solid fa-user-shield"></i>
+                </div>
+                <h1 class="mt-4 text-2xl font-bold tracking-tight text-slate-900">Acceso administrativo</h1>
+                <p class="mt-2 text-sm text-slate-500">Panel de control de la jornada electoral local.</p>
+                <span class="inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-semibold">
+                    <i class="fa-solid fa-flask"></i> Entorno de simulación
+                </span>
+            </div>
+
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-7 rise-in">
+                <form id="loginForm" class="space-y-5" autocomplete="off">
+                    <div>
+                        <label for="username" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">Usuario</label>
+                        <input id="username" name="username" type="text" required autofocus
+                               class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                               placeholder="admin">
+                    </div>
+                    <div>
+                        <label for="password" class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5">Contraseña</label>
+                        <input id="password" name="password" type="password" required
+                               class="w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                               placeholder="••••••••">
+                    </div>
+                    <div id="loginAlert" class="hidden rounded-xl border px-3.5 py-2.5 text-sm"></div>
+                    <button id="loginButton" type="submit"
+                            class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold py-2.5 transition">
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                        <span>Ingresar al panel</span>
+                    </button>
+                </form>
+            </div>
+
+            <div class="mt-6 text-center">
+                <a href="/" class="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-left"></i> Volver a la cabina de votación
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const alertBox = document.getElementById('loginAlert');
+        const button = document.getElementById('loginButton');
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            alertBox.classList.add('hidden');
+            button.disabled = true;
+            button.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i><span>Verificando...</span>';
+            try {
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value.trim(),
+                        password: document.getElementById('password').value,
+                    }),
+                });
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.detail || 'No fue posible iniciar sesión.');
+                }
+                window.location.href = '/admin';
+            } catch (error) {
+                alertBox.className = 'rounded-xl border px-3.5 py-2.5 text-sm bg-rose-50 text-rose-800 border-rose-200';
+                alertBox.innerText = error.message;
+                alertBox.classList.remove('hidden');
+            } finally {
+                button.disabled = false;
+                button.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket"></i><span>Ingresar al panel</span>';
+            }
+        });
+    </script>
+</body>
+</html>

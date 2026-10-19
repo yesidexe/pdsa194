@@ -10,7 +10,7 @@ import json
 
 @dataclass(frozen=True)
 class ElectoralTallyReport:
-    """Producto complejo e inmutable que representa el acta final de escrutinio."""
+    """Producto complejo del acta final de escrutinio (campos de solo lectura)."""
     election_title: str
     jurisdiction: str
     generated_at: datetime

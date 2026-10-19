@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escrutinio y Resultados en Vivo | E-Voting Platform</title>
+    <title>Resultados en Vivo | Plataforma Electoral</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/app.css">
     <style>
         html, body {
             margin: 0;
@@ -17,38 +18,40 @@
         }
     </style>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
+<body class="bg-slate-50 min-h-screen text-slate-800 font-sans antialiased page-enter">
 
-    <!-- Encabezado Fijo y Sólido (Nunca se corta al scrollear o recargar) -->
-    <header class="sticky top-0 z-50 w-full bg-gradient-to-r from-slate-900 to-blue-950 text-white shadow-md">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-2">
+    <!-- Encabezado Fijo y Sólido -->
+    <header class="sticky top-0 z-50 w-full bg-slate-900 text-white shadow-sm border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-3">
             <div class="flex items-center gap-3">
-                <i class="fa-solid fa-chart-line text-3xl text-blue-400"></i>
-                <div>
-                    <h1 class="text-xl font-bold tracking-tight">TRANSMISIÓN DE RESULTADOS EN VIVO</h1>
-                    <p id="dashboardSubheader" class="text-xs text-slate-300">Escrutinio Público y Transparente en Tiempo Real</p>
+                <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center">
+                    <i class="fa-solid fa-chart-line text-lg text-blue-300"></i>
                 </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">RESULTADOS EN VIVO</h1>
+                    <p id="dashboardSubheader" class="text-xs text-slate-300">Escrutinio público y transparente en tiempo real</p>
+                </div>
+                <span class="hidden sm:inline-flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/20 text-[11px] font-semibold">
+                    <i class="fa-solid fa-flask"></i> Entorno de simulación
+                </span>
             </div>
-            <div class="flex items-center gap-3">
-                <a href="/" class="text-xs bg-white/10 hover:bg-white/20 transition px-3 py-1.5 rounded-lg border border-white/20 flex items-center gap-1.5">
-                    <i class="fa-solid fa-person-booth"></i> Ir a Cabina de Votación
+            <div class="flex flex-wrap items-center justify-center gap-2">
+                <a href="/" class="text-xs bg-white/10 hover:bg-white/15 transition px-3 py-1.5 rounded-lg border border-white/15 flex items-center gap-1.5">
+                    <i class="fa-solid fa-person-booth"></i> Cabina
                 </a>
-                <a href="/admin" class="text-xs bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 transition px-3 py-1.5 rounded-lg border border-blue-500/30 flex items-center gap-1.5">
-                    <i class="fa-solid fa-user-shield"></i> Panel de Admin / Jurados
-                </a>
-                <a href="/docs" target="_blank" class="text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 transition px-3 py-1.5 rounded-lg border border-amber-500/30 flex items-center gap-1.5">
-                    <i class="fa-solid fa-code"></i> Swagger API
+                <a href="/admin" class="text-xs bg-blue-500/15 hover:bg-blue-500/25 text-blue-200 transition px-3 py-1.5 rounded-lg border border-blue-500/30 flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-shield"></i> Panel administrativo
                 </a>
             </div>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-4 py-8 space-y-6">
+    <main class="max-w-7xl mx-auto px-4 py-8 sm:py-10 space-y-8">
 
         <!-- Fila de Tarjetas Métricas -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
             <!-- Estado Urna -->
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between hover-lift">
                 <div>
                     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Estado de Urna</p>
                     <h3 id="statUrnaStatus" class="text-xl font-bold text-slate-900 mt-1">Cargando...</h3>
@@ -60,7 +63,7 @@
             </div>
 
             <!-- Votos Emitidos -->
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between hover-lift">
                 <div>
                     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sufragios en Urna</p>
                     <h3 id="statTotalVotes" class="text-3xl font-extrabold text-blue-600 mt-1">0</h3>
@@ -72,7 +75,7 @@
             </div>
 
             <!-- Censo Total -->
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between hover-lift">
                 <div>
                     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Censo Habilitado</p>
                     <h3 id="statTotalCensus" class="text-3xl font-extrabold text-slate-800 mt-1">0</h3>
@@ -84,7 +87,7 @@
             </div>
 
             <!-- Participación -->
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between hover-lift">
                 <div>
                     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Participación</p>
                     <h3 id="statTurnout" class="text-3xl font-extrabold text-emerald-600 mt-1">0%</h3>
@@ -100,11 +103,11 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             <!-- Gráfico Interactivo Chart.js (2/3 de pantalla) -->
-            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 hover-lift">
                 <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                     <div>
-                        <h2 class="text-lg font-bold text-slate-900">Escrutinio Provisorio en Tiempo Real</h2>
-                        <p class="text-xs text-slate-400">Totalización determinista instantánea de sufragios en urna digital</p>
+                        <h2 class="text-lg font-bold text-slate-900">Escrutinio provisorio en tiempo real</h2>
+                        <p class="text-xs text-slate-400">Totalización de sufragios registrados en la urna digital</p>
                     </div>
                     <button onclick="refreshData()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
                         <i class="fa-solid fa-arrows-rotate"></i> Actualizar
@@ -116,13 +119,13 @@
                 </div>
 
                 <div class="bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs text-slate-500 flex items-center justify-between">
-                    <span><i class="fa-solid fa-shield-halved text-emerald-600 mr-1"></i> Resultados asegurados con sellos de tiempo y firmas digitales HMAC.</span>
+                    <span><i class="fa-solid fa-shield-halved text-emerald-600 mr-1"></i> Resultados con sello de tiempo y sello de integridad HMAC-SHA256.</span>
                     <span class="text-slate-400 font-mono">Actualización periódica activa</span>
                 </div>
             </div>
 
             <!-- Tabla Resumen de Votos (1/3 de pantalla) -->
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4 flex flex-col justify-between hover-lift">
                 <div>
                     <div class="border-b border-slate-100 pb-3 mb-4">
                         <h2 class="text-lg font-bold text-slate-900">Desglose de Opciones</h2>
@@ -149,6 +152,15 @@
     <!-- Script de Visualización -->
     <script>
         let chartInstance = null;
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             initChart();
@@ -268,9 +280,9 @@
                 return `
                     <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
                         <div class="flex items-center gap-2.5">
-                            <span class="w-3 h-3 rounded-full" style="background-color: ${colors[i]}"></span>
+                            <span class="w-3 h-3 rounded-full" style="background-color: ${escapeHtml(colors[i])}"></span>
                             <div>
-                                <p class="text-xs font-bold text-slate-800 leading-tight">${name}</p>
+                                <p class="text-xs font-bold text-slate-800 leading-tight">${escapeHtml(name)}</p>
                                 <p class="text-[10px] text-slate-400 font-medium">${pct}% del total</p>
                             </div>
                         </div>

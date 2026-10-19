@@ -1,6 +1,6 @@
-# Avance Patrón de Diseño Factory Method
+# Patrón de Diseño Factory Method
 
-## 1. Identificación del Avance
+## 1. Identificación del patrón
 * **Patrón de Diseño:** Factory Method (Creacional).
 * **Elemento del Sistema:** Jerarquía de Papeletas Electorales (`Ballot`) y Emisores (`BallotCreator`).
 * **Ubicación del Código:** `src/modules/voting/ballot_factory.py`.
@@ -33,22 +33,22 @@ classDiagram
         <<abstract>>
         +str ballot_id
         +datetime issued_at
-        +get_selection()* str
+        +get_selection* str
     }
     class CandidateBallot {
         +str candidate_id
         +str candidate_name
         +str party_name
-        +get_selection() str
+        +get_selection str
     }
     class ReferendumBallot {
         +str question_code
         +str decision
-        +get_selection() str
+        +get_selection str
     }
     class BlankBallot {
         +str category
-        +get_selection() str
+        +get_selection str
     }
     Ballot <|-- CandidateBallot
     Ballot <|-- ReferendumBallot
@@ -83,7 +83,7 @@ classDiagram
 
 La implementación separa rigurosamente la jerarquía del **Producto** (`Ballot`) de la jerarquía del **Creador** (`BallotCreator`).
 
-### 3.1 Jerarquía del Producto (`Ballot` y subclases)
+### 4.1 Jerarquía del Producto (`Ballot` y subclases)
 
 ```python
 from abc import ABC, abstractmethod
@@ -118,7 +118,7 @@ class ReferendumBallot(Ballot):
     decision: str
 
     def get_selection(self) -> str:
-        return f"[{self.question_code}] {self.decision.upper()}"
+        return f"[{self.question_code}] {self.decision.upper}"
 
 @dataclass(frozen=True)
 class BlankBallot(Ballot):
@@ -126,10 +126,10 @@ class BlankBallot(Ballot):
     category: str
 
     def get_selection(self) -> str:
-        return f"VOTO EN BLANCO - {self.category.upper()}"
+        return f"VOTO EN BLANCO - {self.category.upper}"
 ```
 
-### 3.2 Jerarquía del Creador (`BallotCreator` y subclases)
+### 4.2 Jerarquía del Creador (`BallotCreator` y subclases)
 
 ```python
 import uuid
@@ -150,8 +150,8 @@ class BallotCreator(ABC):
 class CandidateBallotCreator(BallotCreator):
     def create_ballot(self, **kwargs) -> CandidateBallot:
         return CandidateBallot(
-            ballot_id=str(uuid.uuid4()),
-            issued_at=datetime.utcnow(),
+            ballot_id=str(uuid.uuid4),
+            issued_at=datetime.utcnow,
             candidate_id=kwargs["candidate_id"],
             candidate_name=kwargs["candidate_name"],
             party_name=kwargs.get("party_name", "Independiente"),
@@ -160,8 +160,8 @@ class CandidateBallotCreator(BallotCreator):
 class ReferendumBallotCreator(BallotCreator):
     def create_ballot(self, **kwargs) -> ReferendumBallot:
         return ReferendumBallot(
-            ballot_id=str(uuid.uuid4()),
-            issued_at=datetime.utcnow(),
+            ballot_id=str(uuid.uuid4),
+            issued_at=datetime.utcnow,
             question_code=kwargs["question_code"],
             decision=kwargs["decision"],
         )
@@ -169,8 +169,8 @@ class ReferendumBallotCreator(BallotCreator):
 class BlankBallotCreator(BallotCreator):
     def create_ballot(self, **kwargs) -> BlankBallot:
         return BlankBallot(
-            ballot_id=str(uuid.uuid4()),
-            issued_at=datetime.utcnow(),
+            ballot_id=str(uuid.uuid4),
+            issued_at=datetime.utcnow,
             category=kwargs.get("category", "General"),
         )
 ```
@@ -179,11 +179,11 @@ class BlankBallotCreator(BallotCreator):
 
 ## 5. Análisis de Ingeniería de Software
 
-### 4.1 Principio Abierto/Cerrado (OCP)
+### 5.1 Principio Abierto/Cerrado (OCP)
 El sistema queda **abierto a la extensión pero cerrado a la modificación**: si el día de mañana la normativa electoral exige un nuevo tipo de tarjetón (ej. voto para consulta indígena), solo se crean dos clases: `IndigenousBallot` y `IndigenousBallotCreator`. No se modifica ni una sola línea del código existente.
 
-### 4.2 Inmutabilidad de los Sufragios
+### 5.2 Inmutabilidad de los Sufragios
 Los productos heredan de `@dataclass(frozen=True)`. Esto asegura que una vez emitido el voto, sus atributos no puedan ser alterados en memoria, alineándose con el principio de integridad del sufragio.
 
-### 4.3 Desacoplamiento de la Operación de Negocio
-El método `issue_ballot()` en la clase base abstracta utiliza el producto retornado por `create_ballot()`, operando únicamente contra la abstracción `Ballot`.
+### 5.3 Desacoplamiento de la Operación de Negocio
+El método `issue_ballot` en la clase base abstracta utiliza el producto retornado por `create_ballot`, operando únicamente contra la abstracción `Ballot`.

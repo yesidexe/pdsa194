@@ -1,0 +1,236 @@
+/* =========================================================================
+   Plataforma electoral — estilos de apoyo
+   Tailwind cubre la mayor parte del diseño; este archivo agrega detalles
+   institucionales, animaciones sutiles y ajustes de legibilidad.
+   ========================================================================= */
+
+:root {
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --surface: #ffffff;
+    --canvas: #f6f7f9;
+    --brand: #0f172a;
+    --accent: #2563eb;
+    --success: #059669;
+    --danger: #dc2626;
+    --warning: #d97706;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background-color: var(--canvas);
+    background-image: radial-gradient(1100px 480px at 50% -18%, rgba(15, 23, 42, 0.055), transparent 62%);
+    background-attachment: fixed;
+    color: var(--ink);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+    background: rgba(37, 99, 235, 0.16);
+    color: var(--ink);
+}
+
+/* Entrada de página y tarjetas ------------------------------------------------ */
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes rise-in {
+    from { transform: translateY(8px); }
+    to { transform: translateY(0); }
+}
+
+@keyframes soft-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.22); }
+    50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+}
+
+.page-enter {
+    /* La entrada se resuelve con transiciones de hover y tarjetas;
+       no se anima la opacidad del body para evitar parpadeos al cargar. */
+    animation: none;
+}
+
+.rise-in {
+    animation: rise-in 0.45s cubic-bezier(0.22, 0.72, 0.2, 1) both;
+}
+
+.stagger > * {
+    animation: rise-in 0.45s cubic-bezier(0.22, 0.72, 0.2, 1) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0.02s; }
+.stagger > *:nth-child(2) { animation-delay: 0.06s; }
+.stagger > *:nth-child(3) { animation-delay: 0.10s; }
+.stagger > *:nth-child(4) { animation-delay: 0.14s; }
+.stagger > *:nth-child(5) { animation-delay: 0.18s; }
+
+.hover-lift {
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px -18px rgba(15, 23, 42, 0.28);
+    border-color: #cbd5e1;
+}
+
+.pressable {
+    transition: transform 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease;
+}
+.pressable:active {
+    transform: scale(0.985);
+}
+
+/* Tarjetón ---------------------------------------------------------------- */
+
+.candidate-card {
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+.candidate-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -20px rgba(15, 23, 42, 0.3);
+}
+.candidate-card:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Tablas ------------------------------------------------------------------ */
+
+.table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+.table-scroll::-webkit-scrollbar {
+    height: 8px;
+}
+.table-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+}
+.table-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.data-table {
+    min-width: 720px;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+.data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f8fafc;
+    backdrop-filter: blur(6px);
+}
+.data-table tbody tr {
+    transition: background-color 0.16s ease;
+}
+.data-table tbody tr:hover {
+    background-color: #f8fafc;
+}
+
+/* Detalles ----------------------------------------------------------------- */
+
+.status-dot-live {
+    animation: soft-pulse 2.2s ease-in-out infinite;
+}
+
+.icon-button {
+    transition: transform 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+}
+.icon-button:hover {
+    transform: translateY(-1px);
+}
+
+/* Accesibilidad ------------------------------------------------------------ */
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .data-table {
+        min-width: 620px;
+    }
+}
+
+/* Botones e iconos --------------------------------------------------------- */
+
+button:not(:disabled),
+a.rounded-xl,
+a.rounded-lg {
+    transition: transform 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+button:not(:disabled):active {
+    transform: scale(0.985);
+}
+
+button:not(:disabled) i,
+a:hover i {
+    transition: transform 0.18s ease;
+}
+
+button:not(:disabled):hover i {
+    transform: translateX(1px);
+}
+
+/* Toasts ------------------------------------------------------------------ */
+
+@keyframes toast-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toast-out {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(6px) scale(0.98); }
+}
+
+.toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    width: min(100%, 28rem);
+    padding: 0.75rem 0.875rem;
+    border-radius: 0.875rem;
+    border: 1px solid var(--line);
+    background: #ffffff;
+    color: var(--ink);
+    box-shadow: 0 12px 40px -20px rgba(15, 23, 42, 0.35);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    animation: toast-in 0.24s ease both;
+}
+
+.toast.toast-out {
+    animation: toast-out 0.2s ease both;
+}
+
+.toast-success { border-color: #a7f3d0; background: #f0fdf4; color: #065f46; }
+.toast-error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+.toast-info { border-color: #bfdbfe; background: #eff6ff; color: #1e40af; }

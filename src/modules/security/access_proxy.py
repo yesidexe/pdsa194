@@ -33,8 +33,28 @@ class ElectoralAccessProxy:
 
     @property
     def audit_log(self) -> List[Dict[str, Any]]:
-        """Bitácora inmutable de eventos interceptados por el Proxy."""
+        """Copia de la bitácora de eventos interceptados por el Proxy."""
         return list(self._audit_log)
+
+    @property
+    def election_type(self) -> str:
+        return self._facade.election_type
+
+    @property
+    def institution_name(self) -> str:
+        return self._facade.institution_name
+
+    @property
+    def election_title(self) -> str:
+        return self._facade.election_title
+
+    @property
+    def ballot_header(self) -> str:
+        return self._facade.ballot_header
+
+    @property
+    def document_type(self) -> str:
+        return self._facade.document_type
 
     def _record_audit_event(self, action: str, user_id: str, role: str, status: str, details: str = "") -> None:
         event = {
@@ -73,32 +93,49 @@ class ElectoralAccessProxy:
     # OPERACIONES DE VOTACIÓN (ELECTOR o JURADO)
     # =========================================================================
 
-    def verify_voter(self, document_id: str, session: Optional[UserSession] = None) -> Dict[str, Any]:
-        """Consulta la habilitación del elector registrando la auditoría de consulta."""
-        user = session.user_id if session else f"ELECTOR-{document_id}"
-        role = session.role.value if session else UserRole.ELECTOR.value
+    def verify_voter(
+        self,
+        document_id: str,
+        pin: str,
+        session: Optional[UserSession] = None,
+    ) -> Dict[str, Any]:
+        """Consulta la habilitación del elector registrando la auditoría de consulta.
 
-        result = self._facade.verify_voter(document_id)
+        En la auditoría no se guarda el documento completo: se enmascara para
+        reducir la exposición de datos personales.
+        """
+        user = session.user_id if session else "ELECTOR-ANONIMO"
+        role = session.role.value if session else UserRole.ELECTOR.value
+        masked = f"***{str(document_id)[-4:]}" if document_id else "***"
+
+        result = self._facade.verify_voter(document_id, pin)
         status = "HABILITADO" if result.get("is_eligible") else "INHABILITADO"
-        self._record_audit_event("VERIFY_VOTER", user, role, status, f"Doc: {document_id}")
+        self._record_audit_event("VERIFY_VOTER", user, role, status, f"Doc: {masked}")
         return result
 
     def cast_secure_vote(
         self,
         document_id: str,
+        pin: str,
         ballot_type: str,
         selection_kwargs: Dict[str, Any],
         session: Optional[UserSession] = None,
-        security_layers: List[str] = ("timestamp", "signature", "watermark"),
+        security_layers: Optional[List[str]] = None,
         signing_key: str = "MASTER_PROXY_KEY_2026",
     ) -> Dict[str, Any]:
-        """Intercepta la emisión de votos validando que la jornada esté abierta y registrando auditoría."""
-        user = session.user_id if session else f"ELECTOR-{document_id}"
+        """Emite el voto y audita solo la papeleta, nunca el documento.
+
+        Antes se registraba ``ELECTOR-<documento>`` junto al ``ballot_id``, lo
+        que permitía reconstruir qué votó cada persona. Ahora la auditoría de
+        emisión es anónima y la relación identidad-papeleta no existe.
+        """
+        user = session.user_id if session else "ELECTOR-ANONIMO"
         role = session.role.value if session else UserRole.ELECTOR.value
 
         try:
             result = self._facade.cast_secure_vote(
                 document_id=document_id,
+                pin=pin,
                 ballot_type=ballot_type,
                 selection_kwargs=selection_kwargs,
                 security_layers=security_layers,
@@ -115,6 +152,37 @@ class ElectoralAccessProxy:
         except Exception as e:
             self._record_audit_event("CAST_VOTE", user, role, "FALLIDO", str(e))
             raise
+
+    # =========================================================================
+    # RESET DE JORNADA (Solo ADMINISTRADOR)
+    # =========================================================================
+
+    def reset_election(self, session: UserSession) -> int:
+        """Borra todos los votos y participaciones de la elección activa.
+
+        Es la operación segura para volver a probar la jornada: elimina todas
+        las papeletas a la vez, sin identificar ni borrar el voto de una
+        persona concreta. El censo queda intacto.
+        """
+        if session.role != UserRole.ADMINISTRADOR:
+            self._record_audit_event(
+                "RESET_ELECTION",
+                session.user_id,
+                session.role.value,
+                "RECHAZADO",
+                "Permiso denegado",
+            )
+            raise PermissionError("Acceso denegado: solo el administrador puede reiniciar la jornada.")
+
+        removed = self._facade.reset_election()
+        self._record_audit_event(
+            "RESET_ELECTION",
+            session.user_id,
+            session.role.value,
+            "AUTORIZADO",
+            f"Papeletas eliminadas: {removed}. Censo conservado.",
+        )
+        return removed
 
     # =========================================================================
     # ESCRUTINIO Y ACTA FINAL (ADMINISTRADOR o JURADO)
@@ -155,6 +223,10 @@ class ElectoralAccessProxy:
     @property
     def is_voting_open(self) -> bool:
         return self._facade.is_voting_open
+
+    @property
+    def is_tallied(self) -> bool:
+        return self._facade.is_tallied
 
     def get_dashboard_summary(self) -> Dict[str, Any]:
         return self._facade.get_dashboard_summary()

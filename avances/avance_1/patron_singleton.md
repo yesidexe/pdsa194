@@ -1,6 +1,6 @@
-# Avance Patrón de Diseño Singleton
+# Patrón de Diseño Singleton
 
-## 1. Identificación del Avance
+## 1. Identificación del patrón
 * **Patrón de Diseño:** Singleton (Creacional).
 * **Elemento del Sistema:** `ElectoralConfigManager` (Núcleo del Dominio).
 * **Ubicación del Código:** `src/core/config.py`.
@@ -16,7 +16,7 @@ En un sistema de votación electrónica, la jornada electoral cuenta con un conj
 
 Si los distintos módulos del sistema (como autenticación de votantes, emisión de sufragios o conteo de votos) gestionaran instancias independientes de la configuración, se producirían inconsistencias de estado. Por ejemplo: el módulo de autenticación podría considerar que la urna sigue abierta mientras que el módulo administrativo ya la cerró.
 
-El patrón **Singleton** garantiza la existencia de **una única instancia global** de la configuración electoral en memoria compartida, proporcionando un punto de acceso centralizado y seguro para todos los subsistemas.
+El patrón **Singleton** garantiza la existencia de **una única instancia global** de la configuración electoral en memoria compartida, proporcionando un punto de acceso centralizado para todos los subsistemas.
 
 ---
 
@@ -37,10 +37,10 @@ classDiagram
         -_bool _is_open
         +__new__(*args, **kwargs)$ ElectoralConfigManager
         +__init__(institution_name, election_title, max_votes_per_citizen) void
-        +is_open() bool
-        +open_voting() void
-        +close_voting() void
-        +reset_for_testing()$ void
+        +is_open bool
+        +open_voting void
+        +close_voting void
+        +reset_for_testing$ void
     }
 ```
 
@@ -50,7 +50,7 @@ classDiagram
 
 En Python, el control de la instanciación única se implementa interceptando el método especial `__new__`, garantizando además la concurrencia mediante cerrojos de sincronización (`threading.Lock`).
 
-### Fragmento de Código Clave (`src/core/config.py`):
+### 4.1 Fragmento de Código Clave (`src/core/config.py`):
 
 ```python
 import threading
@@ -60,14 +60,14 @@ class ElectoralConfigManager:
     """Gestiona la configuración global de la jornada electoral garantizando una única instancia."""
 
     _instance: Optional["ElectoralConfigManager"] = None
-    _lock: threading.Lock = threading.Lock()
+    _lock: threading.Lock = threading.Lock
     _initialized: bool = False
 
     def __new__(cls, *args, **kwargs) -> "ElectoralConfigManager":
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
-                    cls._instance = super().__new__(cls)
+                    cls._instance = super.__new__(cls)
         return cls._instance
 
     def __init__(
@@ -109,15 +109,15 @@ class ElectoralConfigManager:
 
 ## 5. Análisis de Ingeniería de Software
 
-### 4.1 Seguridad en Hilos (*Thread-Safety*)
+### 5.1 Seguridad en Hilos (*Thread-Safety*)
 Se implementó la técnica de comprobación con doble bloqueo (*Double-Checked Locking*):
 1. Se verifica si la variable `_instance` es nula antes de adquirir el cerrojo.
-2. Si es nula, se entra al bloque `with cls._lock` y se vuelve a comprobar antes de asignar `super().__new__(cls)`.
+2. Si es nula, se entra al bloque `with cls._lock` y se vuelve a comprobar antes de asignar `super.__new__(cls)`.
 3. Esto evita el costo de sincronización en llamadas posteriores una vez creada la instancia.
 
-### 4.2 Control de Re-inicialización
+### 5.2 Control de Re-inicialización
 En Python, cada vez que se llama al constructor de clase, `__init__` se invoca de nuevo. Para evitar que llamadas posteriores sobreescriban los datos ya configurados de la elección, se utiliza la bandera `_initialized`.
 
-### 4.3 Relación con Principios SOLID
+### 5.3 Relación con Principios SOLID
 * **Single Responsibility Principle (SRP):** La clase asume la responsabilidad exclusiva de salvaguardar y exponer los parámetros centrales de la jornada electoral, centralizando su ciclo de vida.
-* **Aislamiento para Pruebas (Testability):** Se incorporó el método `reset_for_testing()` para mitigar el acoplamiento global en pruebas automatizadas y asegurar aislamiento entre ejecuciones.
+* **Aislamiento para Pruebas (Testability):** Se incorporó el método `reset_for_testing` para mitigar el acoplamiento global en pruebas automatizadas y asegurar aislamiento entre ejecuciones.

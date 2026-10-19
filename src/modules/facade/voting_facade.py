@@ -1,92 +1,77 @@
-"""Módulo que implementa el patrón Facade para orquestar y simplificar todo el subsistema electoral."""
+"""Fachada de alto nivel del sistema electoral.
+
+La fachada coordina los subsistemas, pero ya no guarda los votos en memoria:
+la urna vive en SQLite y se accede a través de ``vote_store``. La separación
+entre participación y papeleta permite mantener el secreto del voto.
+"""
 from __future__ import annotations
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set
 
-# Núcleo y Configuración (Singleton)
+from typing import Any, Dict, List, Optional
+
 from src.core.config import ElectoralConfigManager
-
-# Módulo de Censo (Adapter)
-from src.modules.census.census_adapter import ICensusRegistry, VoterCensusRecord
-
-# Módulo de Elección (Abstract Factory, Prototype, Composite)
+from src.modules.census.census_adapter import ICensusRegistry
 from src.modules.election.election_factory import (
     ElectoralFamilyFactory,
     CredentialValidator,
-    BallotHeader,
     TallyRule,
 )
 from src.modules.election.station_prototype import VotingStation, StationPrototypeRegistry
-from src.modules.election.jurisdiction_composite import ElectoralUnit, ElectoralJurisdictionComposite, VotingStationLeaf
-
-# Módulo de Votación (Factory Method y Decorator)
+from src.modules.election.jurisdiction_composite import ElectoralUnit
 from src.modules.voting.ballot_factory import (
     Ballot,
-    BallotCreator,
-    CandidateBallot,
     CandidateBallotCreator,
-    ReferendumBallot,
     ReferendumBallotCreator,
-    BlankBallot,
     BlankBallotCreator,
 )
 from src.modules.voting.ballot_decorator import (
-    BallotSecurityDecorator,
-    TimestampSecurityDecorator,
-    DigitalSignatureDecorator,
     AuditWatermarkDecorator,
+    BallotSecurityDecorator,
+    DigitalSignatureDecorator,
+    TimestampSecurityDecorator,
 )
-
-# Módulo de Escrutinio (Builder)
+from src.modules.voting.candidate_flyweight import CandidateFlyweightFactory
+from src.modules.voting.vote_store import (
+    has_voted,
+    list_ballots,
+    register_vote,
+    reset_election as reset_election_store,
+)
 from src.modules.tally.report_builder import OfficialTallyReportBuilder, ElectoralTallyReport
-
-# Módulo de Transmisión (Bridge)
 from src.modules.transmission.bulletin_bridge import (
     ITransmissionChannel,
-    ElectoralBulletin,
     PreliminaryBulletin,
     OfficialClosingBulletin,
-    AuditAlertBulletin,
 )
 
 
 class VotingSystemFacade:
-    """Fachada unificada de alto nivel que simplifica la interacción con el sistema electoral completo."""
+    """Punto de entrada único para las operaciones de la jornada electoral."""
 
     def __init__(
         self,
         institution_name: str = "Consejo Nacional Electoral",
         election_title: str = "Elecciones Oficiales 2026",
+        election_type: str = "NATIONAL",
     ) -> None:
-        # 1. Configuración Centralizada (Singleton)
+        self.election_type = election_type.upper().strip()
         self._config: ElectoralConfigManager = ElectoralConfigManager(
             institution_name=institution_name,
             election_title=election_title,
         )
-
-        # 2. Catálogo de Prototipos de Estaciones (Prototype)
         self._station_registry: StationPrototypeRegistry = StationPrototypeRegistry()
-
-        # 3. Creadores de Papeletas (Factory Method)
         self._candidate_creator: CandidateBallotCreator = CandidateBallotCreator()
         self._referendum_creator: ReferendumBallotCreator = ReferendumBallotCreator()
         self._blank_creator: BlankBallotCreator = BlankBallotCreator()
-
-        # 4. Constructor de Actas (Builder)
         self._tally_builder: OfficialTallyReportBuilder = OfficialTallyReportBuilder()
 
-        # 5. Componentes configurables del ecosistema
         self._census: Optional[ICensusRegistry] = None
         self._family_factory: Optional[ElectoralFamilyFactory] = None
         self._transmission_channel: Optional[ITransmissionChannel] = None
         self._jurisdiction_tree: Optional[ElectoralUnit] = None
-
-        # 6. Almacén anónimo de votos y control de sufragio único
-        self._ballot_box: List[Ballot] = []
-        self._voted_citizens: Set[str] = set()
+        self._tally_generated: bool = False
 
     # =========================================================================
-    # A. CONFIGURACIÓN DEL ECOSISTEMA (Setup & Configuration)
+    # A. CONFIGURACIÓN DEL ECOSISTEMA
     # =========================================================================
 
     def setup_environment(
@@ -96,7 +81,7 @@ class VotingSystemFacade:
         transmission_channel: Optional[ITransmissionChannel] = None,
         jurisdiction_tree: Optional[ElectoralUnit] = None,
     ) -> None:
-        """Asocia adaptadores, fábricas de familia y canales de salida al sistema."""
+        """Asocia censo, familia electoral, canal y jerarquía de mesas."""
         self._census = census_registry
         self._family_factory = family_factory
         self._transmission_channel = transmission_channel
@@ -121,27 +106,69 @@ class VotingSystemFacade:
         )
 
     # =========================================================================
-    # B. CONTROL DE LA JORNADA ELECTORAL (Polls Lifecycle)
+    # B. ESTADO DE LA JORNADA
     # =========================================================================
 
     @property
     def is_voting_open(self) -> bool:
         return self._config.is_open
 
+    @property
+    def is_tallied(self) -> bool:
+        """Indica si ya se generó el acta de esta jornada."""
+        return self._tally_generated
+
+    @property
+    def institution_name(self) -> str:
+        return self._config.institution_name
+
+    @property
+    def election_title(self) -> str:
+        return self._config.election_title
+
+    @property
+    def ballot_header(self) -> str:
+        if self._family_factory is None:
+            return "Encabezado Oficial"
+        return self._family_factory.create_header().render_header()
+
+    @property
+    def document_type(self) -> str:
+        if self._family_factory is None:
+            return "Documento de Identidad"
+        return self._family_factory.create_validator().get_document_type()
+
     def open_polls(self) -> None:
-        """Abre formalmente la urna electoral permitiendo sufragar."""
+        if self._tally_generated:
+            raise ValueError(
+                "La jornada ya fue escrutada. Reinicia la jornada para volver a abrir la urna."
+            )
         self._config.open_voting()
 
     def close_polls(self) -> None:
-        """Cierra la urna electoral bloqueando nuevos sufragios."""
         self._config.close_voting()
 
+    def reset_election(self) -> int:
+        """Borra votos y participaciones de esta elección y reabre la urna."""
+        removed = reset_election_store(self.election_type)
+        self._tally_generated = False
+        self.open_polls()
+        return removed
+
     # =========================================================================
-    # C. AUTENTICACIÓN Y VERIFICACIÓN DE VOTANTES (Inbound & Security)
+    # C. AUTENTICACIÓN DEL ELECTOR
     # =========================================================================
 
-    def verify_voter(self, document_id: str) -> Dict[str, Any]:
-        """Valida si un votante está habilitado, verificando censo, urna y no duplicidad."""
+    def verify_voter(self, document_id: str, pin: str, check_existing: bool = True) -> Dict[str, Any]:
+        """Valida documento + PIN, estado de la urna y voto único.
+
+        La comprobación de PIN la hace el censo (Adapter). Si la fuente censal
+        no soporta credenciales, se falla cerrado.
+
+        ``check_existing=False`` se usa al emitir el voto: la garantía final
+        contra el doble voto es la restricción única de la base de datos, no
+        una consulta previa que podría competir con otra petición.
+        """
         doc = str(document_id).strip()
 
         if not self._config.is_open:
@@ -157,106 +184,136 @@ class VotingSystemFacade:
                 return {
                     "document_id": doc,
                     "is_eligible": False,
-                    "reason": f"Formato de credencial inválido para {validator.get_document_type()} en esta elección.",
+                    "reason": f"Formato de credencial inválido para {validator.get_document_type()}.",
                 }
 
-        if doc in self._voted_citizens:
+        if self._census is None:
+            return {
+                "document_id": doc,
+                "is_eligible": False,
+                "reason": "El censo electoral no está disponible.",
+            }
+
+        record = self._census.authenticate(doc, pin)
+        if record is None:
+            return {
+                "document_id": doc,
+                "is_eligible": False,
+                "reason": "Documento o PIN incorrecto, o elector no habilitado.",
+            }
+
+        if check_existing and has_voted(self.election_type, doc):
             return {
                 "document_id": doc,
                 "is_eligible": False,
                 "reason": "El ciudadano ya ejerció su derecho al voto en esta jornada.",
             }
 
-        if self._census is not None:
-            if not self._census.is_eligible(doc):
-                return {
-                    "document_id": doc,
-                    "is_eligible": False,
-                    "reason": f"El documento no figura habilitado en el censo oficial para: {self._config.election_title}.",
-                }
-
-            record = self._census.get_voter_record(doc)
-            return {
-                "document_id": doc,
-                "is_eligible": True,
-                "full_name": record.full_name if record else "Ciudadano Autorizado",
-                "assigned_station": record.assigned_station_id if record else "MESA-01",
-                "source_type": record.source_type if record else "DEFAULT",
-            }
-
         return {
             "document_id": doc,
             "is_eligible": True,
-            "full_name": "Ciudadano Registrado",
-            "assigned_station": "MESA-01",
+            "full_name": record.full_name,
+            "assigned_station": record.assigned_station_id,
+            "source_type": record.source_type,
         }
 
     # =========================================================================
-    # D. EMISIÓN SEGURA Y ANÓNIMA DEL VOTO (Casting Ballot & Decorators)
+    # D. EMISIÓN DEL VOTO
     # =========================================================================
 
     def cast_secure_vote(
         self,
         document_id: str,
+        pin: str,
         ballot_type: str,
         selection_kwargs: Dict[str, Any],
-        security_layers: List[str] = ("timestamp", "signature", "watermark"),
+        security_layers: Optional[List[str]] = None,
         signing_key: str = "MASTER_FACADE_SECRET_2026",
     ) -> Dict[str, Any]:
-        """Emite el voto, lo decora con seguridad y lo ingresa a la urna desvinculado de la identidad."""
-        # 1. Validación previa de elegibilidad
-        verification = self.verify_voter(document_id)
+        """Emite un voto validado, sellado y persistido de forma atómica.
+
+        El cliente solo puede elegir el ``candidate_id`` (o la categoría del
+        voto en blanco). El nombre, partido y capas de seguridad los decide el
+        servidor para evitar votos con datos inventados o sin firma.
+        """
+        verification = self.verify_voter(document_id, pin, check_existing=False)
         if not verification.get("is_eligible", False):
             raise PermissionError(f"No autorizado para sufragar: {verification.get('reason')}")
 
-        # 2. Fabricación del voto base según tipo (Factory Method)
-        b_type = ballot_type.strip().lower()
+        b_type = str(ballot_type).strip().lower()
+        candidate_id: Optional[str] = None
+        base_ballot: Ballot
+
         if b_type == "candidate":
-            base_ballot = self._candidate_creator.issue_ballot(**selection_kwargs)
-        elif b_type == "referendum":
-            base_ballot = self._referendum_creator.issue_ballot(**selection_kwargs)
+            candidate_id = str(selection_kwargs.get("candidate_id", "")).strip()
+            official = next(
+                (c for c in CandidateFlyweightFactory.get_all_candidates() if c.candidate_id == candidate_id),
+                None,
+            )
+            if official is None:
+                raise ValueError("El candidato seleccionado no existe en el tarjetón oficial.")
+            base_ballot = self._candidate_creator.issue_ballot(
+                candidate_id=official.candidate_id,
+                candidate_name=official.candidate_name,
+                party_name=official.party_name,
+            )
         elif b_type == "blank":
-            base_ballot = self._blank_creator.issue_ballot(**selection_kwargs)
+            base_ballot = self._blank_creator.issue_ballot(category="General")
+        elif b_type == "referendum":
+            question_code = str(selection_kwargs.get("question_code", "")).strip()
+            decision = str(selection_kwargs.get("decision", "")).strip()
+            if not question_code or not decision:
+                raise ValueError("La papeleta de referendo requiere pregunta y decisión.")
+            base_ballot = self._referendum_creator.issue_ballot(
+                question_code=question_code,
+                decision=decision,
+            )
         else:
             raise ValueError(f"Modalidad de papeleta desconocida: '{ballot_type}'")
 
-        # 3. Aplicación dinámica de capas de seguridad (Decorator)
-        decorated_ballot: Ballot = base_ballot
-        if "timestamp" in security_layers:
-            decorated_ballot = TimestampSecurityDecorator(decorated_ballot)
+        # Las capas de seguridad son una política del servidor, no una opción
+        # del cliente. Se aplican siempre las tres.
+        decorated_ballot: Ballot = TimestampSecurityDecorator(base_ballot)
+        decorated_ballot = DigitalSignatureDecorator(
+            decorated_ballot,
+            signing_key=signing_key,
+            officer_token="TERM-FACADE-01",
+        )
+        decorated_ballot = AuditWatermarkDecorator(decorated_ballot)
 
-        if "signature" in security_layers:
-            decorated_ballot = DigitalSignatureDecorator(
-                decorated_ballot,
-                signing_key=signing_key,
-                officer_token=selection_kwargs.get("officer_token", "TERM-FACADE-01"),
-            )
-
-        if "watermark" in security_layers:
-            decorated_ballot = AuditWatermarkDecorator(decorated_ballot)
-
-        # 4. Custodia en urna anónima y registro de elector (Secreto de Voto)
-        self._ballot_box.append(decorated_ballot)
-        self._voted_citizens.add(str(document_id).strip())
-
-        # 5. Generación del comprobante de votación oficial para el elector
-        security_meta: Dict[str, Any] = {}
+        metadata: Dict[str, Any] = {}
         if isinstance(decorated_ballot, BallotSecurityDecorator):
-            security_meta = decorated_ballot.get_security_metadata()
+            metadata = decorated_ballot.get_security_metadata()
+
+        receipt_code = str(metadata.get("receipt_code") or f"REC-{decorated_ballot.ballot_id[:8].upper()}")
+
+        # Participación + papeleta en una sola transacción. La restricción
+        # única de participación es la garantía final contra el doble voto.
+        register_vote(
+            self.election_type,
+            document_id,
+            ballot_id=decorated_ballot.ballot_id,
+            ballot_type=b_type,
+            candidate_id=candidate_id,
+            selection=decorated_ballot.get_selection(),
+            receipt_code=receipt_code,
+            digital_signature=metadata.get("digital_signature"),
+            timestamp_seal=metadata.get("timestamp_seal"),
+        )
 
         return {
             "status": "VOTO_REGISTRADO_EXITOSAMENTE",
-            "receipt_code": security_meta.get("receipt_code", "COMPROBANTE-OK"),
+            "receipt_code": receipt_code,
             "ballot_id": decorated_ballot.ballot_id,
             "issued_at": decorated_ballot.issued_at.isoformat(),
             "selection": decorated_ballot.get_selection(),
-            "security_layers_applied": [layer.lower() for layer in security_layers],
-            "digital_signature": security_meta.get("digital_signature"),
-            "timestamp_seal": security_meta.get("timestamp_seal"),
+            "security_layers_applied": ["timestamp", "signature", "watermark"],
+            "digital_signature": metadata.get("digital_signature"),
+            "timestamp_seal": metadata.get("timestamp_seal"),
         }
 
     # =========================================================================
-    # E. TRANSMISIÓN Y ESCRUTINIO DE RESULTADOS (Bridge & Builder)
+    # E. TRANSMISIÓN Y ESCRUTINIO
     # =========================================================================
 
     def emit_preliminary_bulletin(
@@ -264,15 +321,31 @@ class VotingSystemFacade:
         bulletin_number: int,
         destination: str = "CENTRO_DE_DATOS_CENTRAL",
     ) -> Optional[bool]:
-        """Genera un boletín parcial y lo transmite a través del canal configurado (Bridge)."""
+        """Genera y transmite un boletín parcial con los votos persistidos."""
         if self._transmission_channel is None:
             return None
 
-        # Consolidación rápida de conteos
         candidate_votes: Dict[str, int] = {}
-        for ballot in self._ballot_box:
-            sel = ballot.get_selection()
-            candidate_votes[sel] = candidate_votes.get(sel, 0) + 1
+        for ballot in list_ballots(self.election_type):
+            if ballot.ballot_type == "blank" or "VOTO EN BLANCO" in ballot.selection.upper():
+                label = "VOTO EN BLANCO"
+            elif ballot.candidate_id:
+                official = next(
+                    (
+                        c
+                        for c in CandidateFlyweightFactory.get_all_candidates()
+                        if c.candidate_id == ballot.candidate_id
+                    ),
+                    None,
+                )
+                label = (
+                    f"{official.candidate_name} ({official.party_name})"
+                    if official
+                    else ballot.selection
+                )
+            else:
+                label = ballot.selection
+            candidate_votes[label] = candidate_votes.get(label, 0) + 1
 
         tables = self.get_registered_station_ids() or ["MESA-UNICA"]
         bulletin = PreliminaryBulletin(
@@ -289,33 +362,46 @@ class VotingSystemFacade:
         officer_signatures: List[str],
         dispatch_destination: Optional[str] = None,
     ) -> ElectoralTallyReport:
-        """Cierra urnas, totaliza votos, construye acta inmutable (Builder) y la despacha."""
+        """Cierra la urna, cuenta por identificador y construye el acta."""
         self.close_polls()
 
-        # Desglose de votos
         candidate_votes: Dict[str, int] = {}
         blank_votes = 0
         null_votes = 0
+        other_votes: Dict[str, int] = {}
 
-        for ballot in self._ballot_box:
-            sel = ballot.get_selection()
-            if "VOTO EN BLANCO" in sel.upper():
+        for ballot in list_ballots(self.election_type):
+            if ballot.ballot_type == "blank" or "VOTO EN BLANCO" in ballot.selection.upper():
                 blank_votes += 1
+            elif ballot.candidate_id:
+                official = next(
+                    (
+                        c
+                        for c in CandidateFlyweightFactory.get_all_candidates()
+                        if c.candidate_id == ballot.candidate_id
+                    ),
+                    None,
+                )
+                label = (
+                    f"{official.candidate_name} ({official.party_name})"
+                    if official
+                    else ballot.selection
+                )
+                candidate_votes[label] = candidate_votes.get(label, 0) + 1
             else:
-                candidate_votes[sel] = candidate_votes.get(sel, 0) + 1
+                other_votes[ballot.selection] = other_votes.get(ballot.selection, 0) + 1
+        candidate_votes.update(other_votes)
 
         tables = self.get_registered_station_ids() or ["MESA-01"]
         jurisdiction = "Jurisdicción General"
         if self._jurisdiction_tree is not None:
             jurisdiction = self._jurisdiction_tree.name
 
-        # Evaluación de ganador si hay regla de la familia abstracta (Abstract Factory)
         winner_verdict = "Escrutinio completado."
         if self._family_factory is not None:
             tally_rule: TallyRule = self._family_factory.create_tally_rule()
             winner_verdict = tally_rule.evaluate_winner(candidate_votes)
 
-        # Ensamble de Acta mediante Builder
         builder = self._tally_builder.reset()
         builder.set_header(election_title=self._config.election_title, jurisdiction=jurisdiction)
         builder.add_table_batch(tables)
@@ -323,10 +409,8 @@ class VotingSystemFacade:
         for sig in officer_signatures:
             builder.add_officer_signature(sig)
         builder.set_winner_verdict(winner_verdict)
-
         report = builder.build()
 
-        # Transmisión formal vía Bridge si se especificó destino
         if dispatch_destination and self._transmission_channel is not None:
             closing_bulletin = OfficialClosingBulletin(
                 channel=self._transmission_channel,
@@ -337,10 +421,11 @@ class VotingSystemFacade:
             )
             closing_bulletin.dispatch(destination=dispatch_destination)
 
+        self._tally_generated = True
         return report
 
     # =========================================================================
-    # F. CONSULTA DE ESTADÍSTICAS Y JERARQUÍA (Dashboard & Queries)
+    # F. CONSULTAS Y MÉTRICAS
     # =========================================================================
 
     def get_registered_station_ids(self) -> List[str]:
@@ -349,47 +434,44 @@ class VotingSystemFacade:
         return []
 
     def get_dashboard_summary(self) -> Dict[str, Any]:
-        """Genera un resumen métrico en tiempo real para paneles gráficos y APIs.
-
-        Totaliza anónimamente los votos depositados en la urna digital (_ballot_box),
-        proveyendo tanto los indicadores globales de participación como el desglose
-        por candidato y voto en blanco sin exponer la identidad de los votantes.
-        """
-        total_census = self._census.get_total_registered() if self._census else 0
-        total_votes = len(self._ballot_box)
+        """Resumen de lectura calculado desde las papeletas persistidas."""
+        total_census = self._census.get_total_eligible() if self._census else 0
+        ballots = list_ballots(self.election_type)
+        total_votes = len(ballots)
         turnout_pct = (total_votes / total_census * 100) if total_census > 0 else 0.0
 
-        header_str = "Encabezado Institucional Estándar"
-        if self._family_factory is not None:
-            header_str = self._family_factory.create_header().render_header()
-
-        # Desglose de sufragios custodiados anónimamente en la urna digital
         candidate_votes: Dict[str, int] = {}
         votes_by_candidate_id: Dict[str, int] = {}
         votes_by_candidate_name: Dict[str, int] = {}
-        blank_votes: int = 0
-        null_votes: int = 0
+        blank_votes = 0
+        null_votes = 0
 
-        for ballot in self._ballot_box:
-            base = getattr(ballot, "base_ballot", ballot)
-            if isinstance(base, CandidateBallot):
-                sel = ballot.get_selection()
-                candidate_votes[sel] = candidate_votes.get(sel, 0) + 1
-                votes_by_candidate_id[base.candidate_id] = votes_by_candidate_id.get(base.candidate_id, 0) + 1
-                votes_by_candidate_name[base.candidate_name] = votes_by_candidate_name.get(base.candidate_name, 0) + 1
-            elif isinstance(base, BlankBallot):
+        for ballot in ballots:
+            if ballot.ballot_type == "blank":
                 blank_votes += 1
+                continue
+            if ballot.candidate_id:
+                official = next(
+                    (
+                        c
+                        for c in CandidateFlyweightFactory.get_all_candidates()
+                        if c.candidate_id == ballot.candidate_id
+                    ),
+                    None,
+                )
+                name = official.candidate_name if official else ballot.selection
+                votes_by_candidate_id[ballot.candidate_id] = (
+                    votes_by_candidate_id.get(ballot.candidate_id, 0) + 1
+                )
+                votes_by_candidate_name[name] = votes_by_candidate_name.get(name, 0) + 1
+                candidate_votes[ballot.selection] = candidate_votes.get(ballot.selection, 0) + 1
             else:
-                sel = ballot.get_selection()
-                if "VOTO EN BLANCO" in sel.upper():
-                    blank_votes += 1
-                else:
-                    candidate_votes[sel] = candidate_votes.get(sel, 0) + 1
+                candidate_votes[ballot.selection] = candidate_votes.get(ballot.selection, 0) + 1
 
         return {
             "institution_name": self._config.institution_name,
             "election_title": self._config.election_title,
-            "header": header_str,
+            "header": self.ballot_header,
             "is_open": self._config.is_open,
             "total_registered_citizens": total_census,
             "total_votes_cast": total_votes,

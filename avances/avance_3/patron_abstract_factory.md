@@ -1,6 +1,6 @@
-# Avance Patrón de Diseño Abstract Factory
+# Patrón de Diseño Abstract Factory
 
-## 1. Identificación del Avance
+## 1. Identificación del patrón
 * **Patrón de Diseño:** Abstract Factory (Creacional).
 * **Elemento del Sistema:** Familias de Componentes Electorales (`ElectoralFamilyFactory`).
 * **Ubicación del Código:** `src/modules/election/election_factory.py`.
@@ -31,19 +31,19 @@ classDiagram
     %% Fábrica Abstracta y Concretas
     class ElectoralFamilyFactory {
         <<abstract>>
-        +create_validator()* CredentialValidator
-        +create_header()* BallotHeader
-        +create_tally_rule()* TallyRule
+        +create_validator* CredentialValidator
+        +create_header* BallotHeader
+        +create_tally_rule* TallyRule
     }
     class NationalElectionFactory {
-        +create_validator() CredentialValidator
-        +create_header() BallotHeader
-        +create_tally_rule() TallyRule
+        +create_validator CredentialValidator
+        +create_header BallotHeader
+        +create_tally_rule TallyRule
     }
     class UniversityElectionFactory {
-        +create_validator() CredentialValidator
-        +create_header() BallotHeader
-        +create_tally_rule() TallyRule
+        +create_validator CredentialValidator
+        +create_header BallotHeader
+        +create_tally_rule TallyRule
     }
     ElectoralFamilyFactory <|-- NationalElectionFactory
     ElectoralFamilyFactory <|-- UniversityElectionFactory
@@ -52,15 +52,15 @@ classDiagram
     class CredentialValidator {
         <<abstract>>
         +validate_credential(document_id)* bool
-        +get_document_type()* str
+        +get_document_type* str
     }
     class NationalCitizenValidator {
         +validate_credential(document_id) bool
-        +get_document_type() str
+        +get_document_type str
     }
     class StudentCodeValidator {
         +validate_credential(document_id) bool
-        +get_document_type() str
+        +get_document_type str
     }
     CredentialValidator <|-- NationalCitizenValidator
     CredentialValidator <|-- StudentCodeValidator
@@ -68,13 +68,13 @@ classDiagram
     %% Familia B: BallotHeader
     class BallotHeader {
         <<abstract>>
-        +render_header()* str
+        +render_header* str
     }
     class NationalBallotHeader {
-        +render_header() str
+        +render_header str
     }
     class UniversityBallotHeader {
-        +render_header() str
+        +render_header str
     }
     BallotHeader <|-- NationalBallotHeader
     BallotHeader <|-- UniversityBallotHeader
@@ -121,18 +121,17 @@ class CredentialValidator(ABC):
 
 class NationalCitizenValidator(CredentialValidator):
     def validate_credential(self, document_id: str) -> bool:
-        return document_id.isdigit() and 6 <= len(document_id) <= 10
+        return document_id.isdigit and 6 <= len(document_id) <= 10
 
     def get_document_type(self) -> str:
         return "Cédula de Ciudadanía (C.C.)"
 
 class StudentCodeValidator(CredentialValidator):
     def validate_credential(self, document_id: str) -> bool:
-        return len(document_id) >= 5 and any(c.isdigit() for c in document_id)
+        return len(document_id) >= 5 and any(c.isdigit for c in document_id)
 
     def get_document_type(self) -> str:
         return "Código de Carnet Estudiantil"
-
 
 # --- Producto B: Encabezado de Papeleta ---
 class BallotHeader(ABC):
@@ -148,7 +147,6 @@ class UniversityBallotHeader(BallotHeader):
     def render_header(self) -> str:
         return "UNIVERSIDAD DE INVESTIGACIÓN Y DESARROLLO - CONSEJO SUPERIOR"
 
-
 # --- Producto C: Regla de Escrutinio ---
 class TallyRule(ABC):
     @abstractmethod
@@ -157,10 +155,10 @@ class TallyRule(ABC):
 
 class AbsoluteMajorityTallyRule(TallyRule):
     def evaluate_winner(self, votes_summary: Dict[str, int]) -> str:
-        total = sum(votes_summary.values())
+        total = sum(votes_summary.values)
         if total == 0:
             return "Sin votos registrados"
-        for option, count in votes_summary.items():
+        for option, count in votes_summary.items:
             if count > total / 2:
                 return f"Ganador directo por Mayoría Absoluta (>50%): {option}"
         return "No hay mayoría absoluta: Requiere Segunda Vuelta (Balotaje)"
@@ -194,40 +192,40 @@ class ElectoralFamilyFactory(ABC):
 class NationalElectionFactory(ElectoralFamilyFactory):
     """Produce exclusivamente la familia nacional de componentes."""
     def create_validator(self) -> CredentialValidator:
-        return NationalCitizenValidator()
+        return NationalCitizenValidator
 
     def create_header(self) -> BallotHeader:
-        return NationalBallotHeader()
+        return NationalBallotHeader
 
     def create_tally_rule(self) -> TallyRule:
-        return AbsoluteMajorityTallyRule()
+        return AbsoluteMajorityTallyRule
 
 class UniversityElectionFactory(ElectoralFamilyFactory):
     """Produce exclusivamente la familia universitaria de componentes."""
     def create_validator(self) -> CredentialValidator:
-        return StudentCodeValidator()
+        return StudentCodeValidator
 
     def create_header(self) -> BallotHeader:
-        return UniversityBallotHeader()
+        return UniversityBallotHeader
 
     def create_tally_rule(self) -> TallyRule:
-        return SimplePluralityTallyRule()
+        return SimplePluralityTallyRule
 ```
 
 ---
 
 ## 5. Análisis de Ingeniería de Software
 
-### 4.1 Coherencia de Productos
+### 5.1 Coherencia de Productos
 El mayor beneficio de Abstract Factory en este dominio es garantizar que nunca se mezclen productos de ámbitos distintos. El cliente simplemente solicita una `ElectoralFamilyFactory` y recibe objetos que están garantizados para operar en armonía conceptual y técnica.
 
-### 4.2 Diferencia Formal con Factory Method
+### 5.2 Diferencia Formal con Factory Method
 | Criterio | Factory Method | Abstract Factory |
 | :--- | :--- | :--- |
 | **Alcance** | Crea **un solo producto** (`Ballot`). | Crea **familias completas de productos relacionados** (`Validator`, `Header`, `TallyRule`). |
 | **Mecanismo** | Herencia de clases (`create_ballot`). | Composición de interfaces a nivel de objeto. |
 | **Extensibilidad** | Se extiende añadiendo una subclase creadora. | Se extiende añadiendo una nueva fábrica de familia completa. |
 
-### 4.3 Relación con SOLID
+### 5.3 Relación con SOLID
 * **Open/Closed Principle (OCP):** Es posible introducir una nueva modalidad electoral (por ejemplo, `UnionElectionFactory` para sindicatos) implementando la interfaz abstracta, sin modificar el código que consume los componentes.
 * **Dependency Inversion Principle (DIP):** El subsistema que orquesta la votación depende únicamente de la abstracción `ElectoralFamilyFactory` y de las interfaces abstractas de cada producto, nunca de sus clases concretas.

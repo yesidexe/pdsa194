@@ -1,6 +1,6 @@
-# Avance Patrón de Diseño Prototype
+# Patrón de Diseño Prototype
 
-## 1. Identificación del Avance
+## 1. Identificación del patrón
 * **Patrón de Diseño:** Prototype (Creacional).
 * **Elemento del Sistema:** Replicación de Mesas y Estaciones de Votación (`VotingStation`) mediante la interfaz genérica `Prototype` y catálogo `StationPrototypeRegistry`.
 * **Ubicación del Código:** `src/modules/election/station_prototype.py`.
@@ -19,7 +19,7 @@ Sin embargo, cada mesa física individual debe tener sus propios atributos únic
 * Código de hardware o terminal biométrica asignada.
 * Lista de jurados asignados para la custodia de la mesa.
 
-### Problema de Creación Directa desde Cero
+### 2.1 Problema de Creación Directa desde Cero
 Instanciar repetidamente cada mesa invocando constructores completos con todas las listas y parámetros de configuración:
 1. Consume recursos innecesarios recreando estructuras idénticas en memoria.
 2. Es propenso a errores humanos de configuración en listas de tarjetones autorizados.
@@ -31,7 +31,7 @@ El patrón **Prototype** resuelve este problema permitiendo **clonar objetos exi
 
 ## 3. Modelo Estructural y Diagrama de Clases (UML)
 
-El siguiente diagrama modela la estructura del patrón Prototype, ilustrando el contrato genérico `Prototype[T]`, la entidad clonable `VotingStation` con soporte para personalización mediante `assign_station()`, y el catálogo centralizado `StationPrototypeRegistry`:
+El siguiente diagrama modela la estructura del patrón Prototype, ilustrando el contrato genérico `Prototype[T]`, la entidad clonable `VotingStation` con soporte para personalización mediante `assign_station`, y el catálogo centralizado `StationPrototypeRegistry`:
 
 ```mermaid
 classDiagram
@@ -40,7 +40,7 @@ classDiagram
     %% Interfaz Genérica Prototype
     class Prototype~T~ {
         <<interface>>
-        +clone()* T
+        +clone* T
     }
 
     %% Prototipo Concreto
@@ -52,7 +52,7 @@ classDiagram
         +str hardware_terminal_code
         +bool is_active
         +List~str~ assigned_officers
-        +clone() VotingStation
+        +clone VotingStation
         +assign_station(new_station_id, new_terminal_code, new_officers) VotingStation
     }
 
@@ -141,18 +141,18 @@ class StationPrototypeRegistry:
     def get_clone(self, prototype_key: str) -> VotingStation:
         if prototype_key not in self._prototypes:
             raise KeyError(f"Plantilla prototipo '{prototype_key}' no registrada en el catálogo.")
-        return self._prototypes[prototype_key].clone()
+        return self._prototypes[prototype_key].clone
 ```
 
 ---
 
 ## 5. Análisis de Ingeniería de Software
 
-### 4.1 Análisis Crítico: *Shallow Copy* vs *Deep Copy*
-En Python, una copia superficial (`copy.copy`) copia los campos del objeto pero mantiene la misma referencia en memoria para colecciones mutables como listas y diccionarios (`allowed_ballot_types`, `assigned_officers`). 
+### 5.1 Análisis Crítico: *Shallow Copy* vs *Deep Copy*
+En Python, una copia superficial (`copy.copy`) copia los campos del objeto pero mantiene la misma referencia en memoria para colecciones mutables como listas y diccionarios (`allowed_ballot_types`, `assigned_officers`).
 * **Riesgo electoral:** Si se usara copia superficial, agregar un jurado a la Mesa 2 modificaría automáticamente la lista de jurados de la Mesa 1 y de la plantilla prototipo, generando una falla crítica de integridad de datos.
 * **Solución aplicada:** Se utiliza estrictamente `copy.deepcopy(self)`, lo que asegura que cada clon posea su propio espacio en memoria completamente aislado.
 
-### 4.2 Relación con Principios SOLID
+### 5.2 Relación con Principios SOLID
 * **Single Responsibility Principle (SRP):** Cada estación sabe cómo duplicarse a sí misma de manera segura; el registro (`StationPrototypeRegistry`) se enfoca exclusivamente en la administración de las plantillas.
 * **Open/Closed Principle (OCP):** Nuevos tipos de estaciones o configuraciones de mesas pueden incorporarse y registrarse en tiempo de ejecución sin alterar el código del motor electoral.

@@ -34,6 +34,7 @@ from typing import Any, Dict, List, Optional
 
 # Importamos la capa de persistencia relacional SQLite local
 from src.core.database import CitizenModel, SessionLocal, init_db
+from src.core.security import hash_pin, verify_pin
 
 
 @dataclass(frozen=True)
@@ -92,6 +93,20 @@ class ICensusRegistry(ABC):
         """Retorna el número total de electores registrados en esta fuente censal."""
         pass
 
+    @abstractmethod
+    def get_total_eligible(self) -> int:
+        """Retorna cuántos electores están habilitados para votar."""
+        pass
+
+    @abstractmethod
+    def authenticate(self, document_id: str, pin: str) -> Optional[VoterCensusRecord]:
+        """Verifica documento + PIN y devuelve la ficha censal si es válida.
+
+        Las fuentes sin credenciales propias (JSON/CSV) devuelven ``None`` para
+        fallar de forma cerrada. La fuente SQLite sí implementa la validación.
+        """
+        pass
+
 
 class JsonCensusAdapter(ICensusRegistry):
     """Adaptador concreto para fuentes de datos en formato JSON.
@@ -118,7 +133,11 @@ class JsonCensusAdapter(ICensusRegistry):
             doc = str(item.get("documento_id", item.get("codigo", item.get("id", "")))).strip()
             name = item.get("nombre_completo", item.get("nombres", item.get("name", "Desconocido"))).strip()
             station = item.get("mesa_asignada", item.get("mesa", item.get("station", "MESA-GENERAL"))).strip()
-            eligible = bool(item.get("habilitado", item.get("activo", item.get("eligible", True))))
+            raw_eligible = item.get("habilitado", item.get("activo", item.get("eligible", True)))
+            if isinstance(raw_eligible, str):
+                eligible = raw_eligible.strip().lower() in {"true", "1", "si", "sí", "habilitado", "activo"}
+            else:
+                eligible = bool(raw_eligible)
 
             if doc:
                 self._records_by_id[doc] = VoterCensusRecord(
@@ -138,6 +157,14 @@ class JsonCensusAdapter(ICensusRegistry):
 
     def get_total_registered(self) -> int:
         return len(self._records_by_id)
+
+    def get_total_eligible(self) -> int:
+        return sum(1 for record in self._records_by_id.values() if record.is_eligible)
+
+    def authenticate(self, document_id: str, pin: str) -> Optional[VoterCensusRecord]:
+        # Una fuente JSON/CSV no trae PIN: se falla cerrado para no habilitar
+        # votaciones sin credencial verificable.
+        return None
 
 
 class CsvCensusAdapter(ICensusRegistry):
@@ -200,6 +227,13 @@ class CsvCensusAdapter(ICensusRegistry):
 
     def get_total_registered(self) -> int:
         return len(self._records_by_id)
+
+    def get_total_eligible(self) -> int:
+        return sum(1 for record in self._records_by_id.values() if record.is_eligible)
+
+    def authenticate(self, document_id: str, pin: str) -> Optional[VoterCensusRecord]:
+        # Igual que el adaptador JSON: sin PIN propio, no se permite el voto.
+        return None
 
 
 class SqliteCensusAdapter(ICensusRegistry):
@@ -270,6 +304,47 @@ class SqliteCensusAdapter(ICensusRegistry):
         finally:
             session.close()
 
+    def get_total_eligible(self) -> int:
+        """Cuenta solo los electores habilitados, no los inhabilitados."""
+        session = SessionLocal()
+        try:
+            return (
+                session.query(CitizenModel)
+                .filter(
+                    CitizenModel.election_type == self.election_type,
+                    CitizenModel.is_eligible.is_(True),
+                )
+                .count()
+            )
+        finally:
+            session.close()
+
+    def authenticate(self, document_id: str, pin: str) -> Optional[VoterCensusRecord]:
+        """Valida documento + PIN contra la base de datos SQLite."""
+        session = SessionLocal()
+        try:
+            citizen = (
+                session.query(CitizenModel)
+                .filter(
+                    CitizenModel.document_id == str(document_id).strip(),
+                    CitizenModel.election_type == self.election_type,
+                )
+                .first()
+            )
+            if not citizen or not citizen.is_eligible:
+                return None
+            if not verify_pin(pin, citizen.pin_hash):
+                return None
+            return VoterCensusRecord(
+                document_id=citizen.document_id,
+                full_name=citizen.full_name,
+                assigned_station_id=citizen.assigned_station_id,
+                is_eligible=citizen.is_eligible,
+                source_type="SQLITE_DATABASE",
+            )
+        finally:
+            session.close()
+
     def get_all_voters(self, election_type: Optional[str] = None) -> List[VoterCensusRecord]:
         """Devuelve la lista completa de votantes registrados en la base de datos."""
         session = SessionLocal()
@@ -299,18 +374,31 @@ class SqliteCensusAdapter(ICensusRegistry):
         assigned_station_id: str = "MESA-01",
         is_eligible: bool = True,
         election_type: Optional[str] = None,
+        pin: str = "1234",
     ) -> VoterCensusRecord:
-        """Inscribe un nuevo ciudadano en la base de datos SQL o actualiza uno existente."""
+        """Inscribe o actualiza un elector dentro de la elección indicada.
+
+        La búsqueda incluye ``election_type``: la misma cédula puede existir en
+        el censo nacional y en el universitario sin que un registro borre al otro.
+        """
         session = SessionLocal()
         target_type = (election_type or self.election_type).upper().strip()
         doc = str(document_id).strip()
         try:
-            existing = session.query(CitizenModel).filter(CitizenModel.document_id == doc).first()
+            existing = (
+                session.query(CitizenModel)
+                .filter(
+                    CitizenModel.document_id == doc,
+                    CitizenModel.election_type == target_type,
+                )
+                .first()
+            )
             if existing:
                 existing.full_name = full_name.strip()
                 existing.assigned_station_id = assigned_station_id.strip()
                 existing.is_eligible = is_eligible
-                existing.election_type = target_type
+                if pin:
+                    existing.pin_hash = hash_pin(pin)
                 session.commit()
                 return VoterCensusRecord(
                     document_id=existing.document_id,
@@ -326,6 +414,7 @@ class SqliteCensusAdapter(ICensusRegistry):
                 assigned_station_id=assigned_station_id.strip(),
                 is_eligible=is_eligible,
                 election_type=target_type,
+                pin_hash=hash_pin(pin or "1234"),
             )
             session.add(new_citizen)
             session.commit()
@@ -340,12 +429,15 @@ class SqliteCensusAdapter(ICensusRegistry):
             session.close()
 
     def toggle_eligibility(self, document_id: str, is_eligible: bool) -> bool:
-        """Modifica el estado de habilitación política de un ciudadano en la base de datos."""
+        """Modifica la habilitación del elector dentro de esta elección."""
         session = SessionLocal()
         try:
             citizen = (
                 session.query(CitizenModel)
-                .filter(CitizenModel.document_id == str(document_id).strip())
+                .filter(
+                    CitizenModel.document_id == str(document_id).strip(),
+                    CitizenModel.election_type == self.election_type,
+                )
                 .first()
             )
             if not citizen:

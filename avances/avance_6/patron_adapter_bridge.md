@@ -1,7 +1,7 @@
-# Avance Patrones de Diseño Adapter y Bridge
+# Patrones de Diseño Adapter y Bridge
 
-## 1. Identificación del Avance
-* **Patrones de Diseño:** Adapter y Bridge (Patrones Estructurales - Corte 2 / Semana 7).
+## 1. Identificación del patrón
+* **Patrones de Diseño:** Adapter y Bridge (Patrones Estructurales).
 * **Elementos del Sistema:**
   * **Módulo de Censo Electoral (Adapter):** Interfaz canónica `ICensusRegistry`, entidad inmutable `VoterCensusRecord`, y adaptadores concretos `JsonCensusAdapter` y `CsvCensusAdapter`.
   * **Módulo de Transmisión Multicanal (Bridge):** Abstracción base `ElectoralBulletin` con sus refinamientos (`PreliminaryBulletin`, `AuditAlertBulletin`, `OfficialClosingBulletin`), conectada mediante puente a la interfaz implementadora `ITransmissionChannel` (`ConsoleTransmissionChannel`, `FileTransmissionChannel`, `MemoryAuditSinkTransmissionChannel`).
@@ -15,24 +15,12 @@
 
 En esta etapa del sistema electoral, el reto principal consiste en **conectar y comunicar componentes heterogéneos sin acoplar la arquitectura**:
 
-```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                        ARQUITECTURA DE INTEGRACIÓN Y SALIDA                            │
-│                                                                                        │
-│  [FUENTES EXTERNAS]          [NÚCLEO ELECTORAL]            [CANALES DE SALIDA]         │
-│  • CSV Registraduría ──► [ADAPTER] ──► Validación Elector                              │
-│  • JSON Universitario ──► [Censo]  ──► Emisión / Conteo ──► [BRIDGE] ──► Consola / Log │
-│                                                             [Transmisión] ──► Archivo  │
-│                                                                           ──► Sink Mem │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
 ### 2.1 Problemática de Incompatibilidad de Fuentes: Justificación de ADAPTER
 Para ejercer el voto, el sistema debe consultar un padrón electoral oficial. Sin embargo, en la práctica gubernamental e institucional, los censos provienen de orígenes completamente dispares:
 1. **Elecciones Nacionales:** La Registraduría Nacional expide volcados masivos en formato de texto plano CSV con encabezados legados (`cedula,nombre_apellidos,mesa_num,habilitado_sufragio`).
 2. **Elecciones Institucionales o Universitarias:** Las oficinas de registro y control proveen APIs REST o exportaciones JSON estructuradas con llaves diferentes (`codigo,nombres,mesa,activo`).
 
-Si el motor de votación se programara para leer directamente las llaves de un JSON o las columnas de un CSV, se violaría gravemente el principio de inversión de dependencias (DIP) y el principio de responsabilidad única (SRP). Cualquier cambio en la estructura del archivo externo rompería la lógica electoral. 
+Si el motor de votación se programara para leer directamente las llaves de un JSON o las columnas de un CSV, se violaría gravemente el principio de inversión de dependencias (DIP) y el principio de responsabilidad única (SRP). Cualquier cambio en la estructura del archivo externo rompería la lógica electoral.
 
 El patrón **Adapter** resuelve esta incompatibilidad actuando como un traductor intermedio: envuelve la estructura externa no estándar (*Adaptee*) y expone la interfaz unificada que el sistema electoral espera (*Target*: `ICensusRegistry`).
 
@@ -49,7 +37,7 @@ Durante el transcurso de las elecciones y al cierre de urnas, se requiere difund
 
 #### El Antipatrón de Herencia Evitado (Explosión Combinatoria):
 Si resolviéramos esta necesidad mediante herencia tradicional, tendríamos que crear clases para cada combinación posible:
-`PreliminaryBulletinConsole`, `PreliminaryBulletinFile`, `AuditAlertConsole`, `AuditAlertFile`, `ClosingBulletinConsole`, etc.  
+`PreliminaryBulletinConsole`, `PreliminaryBulletinFile`, `AuditAlertConsole`, `AuditAlertFile`, `ClosingBulletinConsole`, etc.
 Con 3 tipos de boletines y 3 canales de salida, se requerirían **$3 \times 3 = 9$ clases**. Si el día de mañana se agrega un nuevo canal (ej. Webhook REST o Transmisión Satelital), se sumarían 3 clases más por cada nuevo medio.
 
 El patrón **Bridge** resuelve este dilema desacoplando la jerarquía de abstracción (los boletines) de la jerarquía de implementación (los canales de transporte), combinándolos por **composición**. Esto reduce el número total de clases a **$3 + 3 = 6$**, permitiendo que cualquiera de las dos jerarquías crezca de forma autónoma sin impactar a la otra.
@@ -71,7 +59,7 @@ classDiagram
         <<interface>>
         +is_eligible(document_id: str)* bool
         +get_voter_record(document_id: str)* Optional~VoterCensusRecord~
-        +get_total_registered()* int
+        +get_total_registered* int
     }
 
     %% Modelo Canónico de Dominio
@@ -89,7 +77,7 @@ classDiagram
         -_parse_payload(data: dict) void
         +is_eligible(document_id: str) bool
         +get_voter_record(document_id: str) Optional~VoterCensusRecord~
-        +get_total_registered() int
+        +get_total_registered int
     }
 
     class CsvCensusAdapter {
@@ -97,7 +85,7 @@ classDiagram
         -_parse_csv(csv_content: str, delimiter: str) void
         +is_eligible(document_id: str) bool
         +get_voter_record(document_id: str) Optional~VoterCensusRecord~
-        +get_total_registered() int
+        +get_total_registered int
     }
 
     ICensusRegistry <|.. JsonCensusAdapter : implementa (Target)
@@ -150,9 +138,9 @@ class JsonCensusAdapter(ICensusRegistry):
     def _parse_payload(self, data: Dict[str, Any]) -> None:
         items = data.get("electores", data.get("estudiantes", data.get("citizens", [])))
         for item in items:
-            doc = str(item.get("documento_id", item.get("codigo", item.get("id", "")))).strip()
-            name = item.get("nombre_completo", item.get("nombres", item.get("name", "Desconocido"))).strip()
-            station = item.get("mesa_asignada", item.get("mesa", item.get("station", "MESA-GENERAL"))).strip()
+            doc = str(item.get("documento_id", item.get("codigo", item.get("id", "")))).strip
+            name = item.get("nombre_completo", item.get("nombres", item.get("name", "Desconocido"))).strip
+            station = item.get("mesa_asignada", item.get("mesa", item.get("station", "MESA-GENERAL"))).strip
             eligible = bool(item.get("habilitado", item.get("activo", item.get("eligible", True))))
 
             if doc:
@@ -165,11 +153,11 @@ class JsonCensusAdapter(ICensusRegistry):
                 )
 
     def is_eligible(self, document_id: str) -> bool:
-        record = self._records_by_id.get(str(document_id).strip())
+        record = self._records_by_id.get(str(document_id).strip)
         return record.is_eligible if record else False
 
     def get_voter_record(self, document_id: str) -> Optional[VoterCensusRecord]:
-        return self._records_by_id.get(str(document_id).strip())
+        return self._records_by_id.get(str(document_id).strip)
 
     def get_total_registered(self) -> int:
         return len(self._records_by_id)
@@ -185,13 +173,13 @@ class CsvCensusAdapter(ICensusRegistry):
         self._parse_csv(csv_content, delimiter)
 
     def _parse_csv(self, csv_content: str, delimiter: str) -> None:
-        reader = csv.DictReader(io.StringIO(csv_content.strip()), delimiter=delimiter)
+        reader = csv.DictReader(io.StringIO(csv_content.strip), delimiter=delimiter)
         for row in reader:
-            norm = {k.strip().lower(): v.strip() for k, v in row.items() if k}
+            norm = {k.strip.lower: v.strip for k, v in row.items if k}
             doc = norm.get("cedula") or norm.get("documento") or norm.get("document_id", "")
             name = norm.get("nombre") or norm.get("nombre_completo") or norm.get("full_name", "Desconocido")
             station = norm.get("mesa") or norm.get("mesa_asignada") or "MESA-GENERAL"
-            status_raw = (norm.get("habilitado") or norm.get("estado", "si")).lower()
+            status_raw = (norm.get("habilitado") or norm.get("estado", "si")).lower
             eligible = status_raw in ("si", "sí", "true", "1", "habilitado", "activo")
 
             if doc:
@@ -204,11 +192,11 @@ class CsvCensusAdapter(ICensusRegistry):
                 )
 
     def is_eligible(self, document_id: str) -> bool:
-        record = self._records_by_id.get(str(document_id).strip())
+        record = self._records_by_id.get(str(document_id).strip)
         return record.is_eligible if record else False
 
     def get_voter_record(self, document_id: str) -> Optional[VoterCensusRecord]:
-        return self._records_by_id.get(str(document_id).strip())
+        return self._records_by_id.get(str(document_id).strip)
 
     def get_total_registered(self) -> int:
         return len(self._records_by_id)
@@ -270,24 +258,24 @@ classDiagram
     class ITransmissionChannel {
         <<interface>>
         +send_payload(destination: str, payload: dict)* bool
-        +get_channel_name()* str
+        +get_channel_name* str
     }
 
     class ConsoleTransmissionChannel {
         +send_payload(destination: str, payload: dict) bool
-        +get_channel_name() str
+        +get_channel_name str
     }
 
     class FileTransmissionChannel {
         -Path _output_dir
         +send_payload(destination: str, payload: dict) bool
-        +get_channel_name() str
+        +get_channel_name str
     }
 
     class MemoryAuditSinkTransmissionChannel {
         +List sent_messages
         +send_payload(destination: str, payload: dict) bool
-        +get_channel_name() str
+        +get_channel_name str
     }
 
     ITransmissionChannel <|.. ConsoleTransmissionChannel : implementa
@@ -316,7 +304,7 @@ class ITransmissionChannel(ABC):
 class ConsoleTransmissionChannel(ITransmissionChannel):
     """Implementador concreto para consola/log oficial."""
     def send_payload(self, destination: str, payload: Dict[str, Any]) -> bool:
-        timestamp = payload.get("timestamp", datetime.utcnow().isoformat())
+        timestamp = payload.get("timestamp", datetime.utcnow.isoformat)
         print(f"\n[CANAL CONSOLA :: {destination}] ({timestamp}) Tipo: {payload.get('type')}")
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return True
@@ -331,7 +319,7 @@ class FileTransmissionChannel(ITransmissionChannel):
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
     def send_payload(self, destination: str, payload: Dict[str, Any]) -> bool:
-        safe_name = destination.replace("/", "_").replace(" ", "_").lower()
+        safe_name = destination.replace("/", "_").replace(" ", "_").lower
         file_path = self._output_dir / f"transmission_{safe_name}.jsonl"
         with open(file_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(payload, ensure_ascii=False) + "\n")
@@ -379,7 +367,7 @@ class PreliminaryBulletin(ElectoralBulletin):
     def __init__(self, channel: ITransmissionChannel, bulletin_number: int,
                  election_title: str, processed_tables: List[str],
                  candidate_votes: Dict[str, int]) -> None:
-        super().__init__(channel)
+        super.__init__(channel)
         self.bulletin_number = bulletin_number
         self.election_title = election_title
         self.processed_tables = list(processed_tables)
@@ -390,11 +378,11 @@ class PreliminaryBulletin(ElectoralBulletin):
             "type": "PRELIMINARY_BULLETIN",
             "bulletin_number": self.bulletin_number,
             "election_title": self.election_title,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.utcnow.isoformat,
             "tables_processed_count": len(self.processed_tables),
             "tables": self.processed_tables,
             "candidate_votes": self.candidate_votes,
-            "total_votes_tallied": sum(self.candidate_votes.values()),
+            "total_votes_tallied": sum(self.candidate_votes.values),
         }
         return self._channel.send_payload(destination=destination, payload=payload)
 
@@ -402,9 +390,9 @@ class AuditAlertBulletin(ElectoralBulletin):
     """Abstracción refinada: Alerta prioritaria de seguridad o auditoría."""
     def __init__(self, channel: ITransmissionChannel, alert_code: str,
                  severity: str, description: str, affected_station_id: str) -> None:
-        super().__init__(channel)
+        super.__init__(channel)
         self.alert_code = alert_code
-        self.severity = severity.upper()
+        self.severity = severity.upper
         self.description = description
         self.affected_station_id = affected_station_id
 
@@ -415,7 +403,7 @@ class AuditAlertBulletin(ElectoralBulletin):
             "severity": self.severity,
             "station_id": self.affected_station_id,
             "description": self.description,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.utcnow.isoformat,
         }
         return self._channel.send_payload(destination=destination, payload=payload)
 ```
@@ -425,7 +413,7 @@ class AuditAlertBulletin(ElectoralBulletin):
 ## 5. Análisis de Ingeniería de Software
 
 ### 5.1 Comparativa Formal: Adapter vs Bridge
-Siguiendo las pautas metodológicas de la Semana 7, ambos patrones emplean envoltura y composición pero responden a intenciones radicalmente diferentes:
+ambos patrones emplean envoltura y composición pero responden a intenciones radicalmente diferentes:
 
 | Criterio | Patrón ADAPTER | Patrón BRIDGE |
 | :--- | :--- | :--- |
@@ -436,15 +424,15 @@ Siguiendo las pautas metodológicas de la Semana 7, ambos patrones emplean envol
 | **Rol en el Sistema** | **Inbound (Entrada):** Ingesta y saneamiento de electores. | **Outbound (Salida):** Transmisión y reporte de eventos oficiales. |
 
 ### 5.2 Cumplimiento de Principios SOLID
-* **Single Responsibility Principle (SRP):**  
+* **Single Responsibility Principle (SRP):**
   - Los adaptadores solo traducen formatos de datos al modelo canónico; no validan urnas ni cuentan votos.
   - La abstracción `ElectoralBulletin` solo modela la semántica del mensaje; el canal `ITransmissionChannel` se ocupa exclusivamente del protocolo de transporte.
-* **Open/Closed Principle (OCP):**  
+* **Open/Closed Principle (OCP):**
   - Si mañana el gobierno suministra el censo mediante una base de datos SQLite o servicio SOAP, solo se programa un `SqliteCensusAdapter` sin alterar una sola línea del motor electoral.
   - Si se añade un canal de difusión por Webhook o satélite, solo se implementa `RestWebhookTransmissionChannel` sin tocar los boletines existentes.
-* **Dependency Inversion Principle (DIP):**  
+* **Dependency Inversion Principle (DIP):**
   - Los casos de uso electorales solo dependen de `ICensusRegistry` y de `ElectoralBulletin`, operando contra abstracciones puras.
-* **Liskov Substitution Principle (LSP):**  
+* **Liskov Substitution Principle (LSP):**
   - Cualquier canal concreto (`Console`, `File`, `MemorySink`) puede sustituir a otro en tiempo de ejecución mediante la propiedad `bulletin.channel = nuevo_canal` sin alterar la lógica de despacho.
 
 ### 5.3 Testabilidad y Aislamiento para Pruebas

@@ -38,246 +38,107 @@ Desarrollar un prototipo funcional de una **Plataforma de Votación Electrónica
 
 ## 3. Arquitectura y Diseño del Sistema
 
-### 3.1 Diagrama de Clases (UML)
-El siguiente diagrama representa el modelo de clases y la relación estructural entre los módulos de configuración, emisión de votos y parametrización de elecciones del sistema:
+### 3.1 Vista general
 
-```mermaid
-classDiagram
-    direction TB
+La aplicación es un monolito local con una separación clara entre presentación, dominio y persistencia:
 
-    %% MÓDULO CORE - SINGLETON
-    class ElectoralConfigManager {
-        -ElectoralConfigManager _instance$
-        -Lock _lock$
-        -bool _initialized$
-        +str institution_name
-        +str election_title
-        +int max_votes_per_citizen
-        -_bool _is_open
-        +is_open() bool
-        +open_voting() void
-        +close_voting() void
-        +reset_for_testing()$ void
-    }
-
-    %% MÓDULO VOTING - FACTORY METHOD
-    class Ballot {
-        <<abstract>>
-        +str ballot_id
-        +datetime issued_at
-        +get_selection()* str
-    }
-    class CandidateBallot {
-        +str candidate_id
-        +str candidate_name
-        +str party_name
-        +get_selection() str
-    }
-    class ReferendumBallot {
-        +str question_code
-        +str decision
-        +get_selection() str
-    }
-    class BlankBallot {
-        +str category
-        +get_selection() str
-    }
-    Ballot <|-- CandidateBallot
-    Ballot <|-- ReferendumBallot
-    Ballot <|-- BlankBallot
-
-    class BallotCreator {
-        <<abstract>>
-        +create_ballot(**kwargs)* Ballot
-        +issue_ballot(**kwargs) Ballot
-    }
-    class CandidateBallotCreator {
-        +create_ballot(**kwargs) CandidateBallot
-    }
-    class ReferendumBallotCreator {
-        +create_ballot(**kwargs) ReferendumBallot
-    }
-    class BlankBallotCreator {
-        +create_ballot(**kwargs) BlankBallot
-    }
-    BallotCreator <|-- CandidateBallotCreator
-    BallotCreator <|-- ReferendumBallotCreator
-    BallotCreator <|-- BlankBallotCreator
-    BallotCreator ..> Ballot : crea
-
-    %% MÓDULO ELECTION - ABSTRACT FACTORY
-    class CredentialValidator {
-        <<abstract>>
-        +validate_credential(document_id)* bool
-        +get_document_type()* str
-    }
-    class NationalCitizenValidator {
-        +validate_credential(document_id) bool
-        +get_document_type() str
-    }
-    class StudentCodeValidator {
-        +validate_credential(document_id) bool
-        +get_document_type() str
-    }
-    CredentialValidator <|-- NationalCitizenValidator
-    CredentialValidator <|-- StudentCodeValidator
-
-    class BallotHeader {
-        <<abstract>>
-        +render_header()* str
-    }
-    class NationalBallotHeader {
-        +render_header() str
-    }
-    class UniversityBallotHeader {
-        +render_header() str
-    }
-    BallotHeader <|-- NationalBallotHeader
-    BallotHeader <|-- UniversityBallotHeader
-
-    class TallyRule {
-        <<abstract>>
-        +evaluate_winner(votes_summary)* str
-    }
-    class AbsoluteMajorityTallyRule {
-        +evaluate_winner(votes_summary) str
-    }
-    class SimplePluralityTallyRule {
-        +evaluate_winner(votes_summary) str
-    }
-    TallyRule <|-- AbsoluteMajorityTallyRule
-    TallyRule <|-- SimplePluralityTallyRule
-
-    class ElectoralFamilyFactory {
-        <<abstract>>
-        +create_validator()* CredentialValidator
-        +create_header()* BallotHeader
-        +create_tally_rule()* TallyRule
-    }
-    class NationalElectionFactory {
-        +create_validator() CredentialValidator
-        +create_header() BallotHeader
-        +create_tally_rule() TallyRule
-    }
-    class UniversityElectionFactory {
-        +create_validator() CredentialValidator
-        +create_header() BallotHeader
-        +create_tally_rule() TallyRule
-    }
-    ElectoralFamilyFactory <|-- NationalElectionFactory
-    ElectoralFamilyFactory <|-- UniversityElectionFactory
-    ElectoralFamilyFactory ..> CredentialValidator : fabrica
-    ElectoralFamilyFactory ..> BallotHeader : fabrica
-    ElectoralFamilyFactory ..> TallyRule : fabrica
-
-    %% MÓDULO TALLY - BUILDER
-    class ElectoralTallyReport {
-        +str election_title
-        +str jurisdiction
-        +datetime generated_at
-        +List~str~ table_ids
-        +Dict candidate_votes
-        +int blank_votes
-        +int null_votes
-        +int total_votes
-        +List~str~ officer_signatures
-        +str integrity_hash
-        +to_formatted_summary() str
-    }
-    class TallyReportBuilder {
-        <<abstract>>
-        +reset()* TallyReportBuilder
-        +set_header(election_title, jurisdiction)* TallyReportBuilder
-        +add_table_batch(table_ids)* TallyReportBuilder
-        +set_votes(candidate_votes, blank_votes, null_votes)* TallyReportBuilder
-        +add_officer_signature(signature_code)* TallyReportBuilder
-        +build()* ElectoralTallyReport
-    }
-    class OfficialTallyReportBuilder {
-        +reset() OfficialTallyReportBuilder
-        +set_header(election_title, jurisdiction) OfficialTallyReportBuilder
-        +add_table_batch(table_ids) OfficialTallyReportBuilder
-        +set_votes(candidate_votes, blank_votes, null_votes) OfficialTallyReportBuilder
-        +add_officer_signature(signature_code) OfficialTallyReportBuilder
-        +build() ElectoralTallyReport
-    }
-    class TallyReportDirector {
-        -TallyReportBuilder _builder
-        +construct_preliminary_bulletin(title, jurisdiction, tables, votes) ElectoralTallyReport
-    }
-    TallyReportBuilder <|-- OfficialTallyReportBuilder
-    OfficialTallyReportBuilder ..> ElectoralTallyReport : construye
-    TallyReportDirector o-- TallyReportBuilder
-
-    %% MÓDULO ELECTION - PROTOTYPE
-    class Prototype~T~ {
-        <<interface>>
-        +clone()* T
-    }
-    class VotingStation {
-        +str station_id
-        +str polling_place
-        +str zone_code
-        +List~str~ allowed_ballot_types
-        +str hardware_terminal_code
-        +bool is_active
-        +List~str~ assigned_officers
-        +clone() VotingStation
-        +assign_station(new_station_id, new_terminal_code, new_officers) VotingStation
-    }
-    class StationPrototypeRegistry {
-        -Dict _prototypes
-        +register_prototype(prototype_key, station) void
-        +get_clone(prototype_key) VotingStation
-    }
-    Prototype <|.. VotingStation
-    StationPrototypeRegistry o-- VotingStation
+```text
+Navegador
+   │  HTML + JavaScript + Tailwind
+   ▼
+FastAPI (src/presentation)
+   │  API REST + rutas HTML + cookie de administrador
+   ▼
+Proxy de seguridad (src/modules/security)
+   │  roles, auditoría y operaciones protegidas
+   ▼
+Fachada (src/modules/facade)
+   │  coordina censo, votación, escrutinio y transmisión
+   ├── Censo (Adapter: SQLite / JSON / CSV)
+   ├── Papeletas (Factory Method + Decorator)
+   ├── Familias electorales (Abstract Factory)
+   ├── Mesas (Prototype + Composite)
+   ├── Actas (Builder)
+   └── Boletines (Bridge)
+   ▼
+SQLite (e_voting.db)
+   ├── census_citizens
+   ├── voter_participation
+   └── ballot_records
 ```
+
+La decisión de diseño más importante es la **separación entre participación y papeleta**: `voter_participation` sabe quién votó; `ballot_records` sabe qué se votó; no existe una clave que las una. Así el panel administrativo puede reiniciar la jornada sin poder consultar el voto de una persona concreta.
+
+### 3.2 Módulos y responsabilidades
+
+| Módulo | Responsabilidad | Piezas principales |
+|---|---|---|
+| `src/core` | Configuración, seguridad, base de datos y utilidades | `settings.py`, `security.py`, `database.py` |
+| `src/modules/census` | Traducir censos externos al modelo canónico | `ICensusRegistry`, `SqliteCensusAdapter`, `JsonCensusAdapter`, `CsvCensusAdapter` |
+| `src/modules/election` | Familias electorales, mesas y jerarquías | `ElectoralFamilyFactory`, `VotingStation`, `ElectoralJurisdictionComposite` |
+| `src/modules/voting` | Crear papeletas, sellarlas y persistirlas | `BallotCreator`, `BallotSecurityDecorator`, `vote_store.py` |
+| `src/modules/tally` | Construir el acta de escrutinio | `OfficialTallyReportBuilder`, `ElectoralTallyReport` |
+| `src/modules/transmission` | Enviar boletines por distintos canales | `ITransmissionChannel`, `PreliminaryBulletin`, `OfficialClosingBulletin` |
+| `src/modules/security` | Proteger operaciones y auditar | `ElectoralAccessProxy`, `UserSession`, `UserRole` |
+| `src/modules/facade` | Punto de entrada de alto nivel | `VotingSystemFacade` |
+| `src/presentation` | API, plantillas y autenticación local | `api.py`, `auth.py`, `templates/*.html` |
+
+### 3.3 Recorrido de un voto
+
+1. El elector abre la cabina, ingresa **documento + PIN** y el sistema valida censo, habilitación y jornada abierta.
+2. El cliente envía solo el `candidate_id` (o el tipo de voto en blanco). El servidor busca el candidato en el tarjetón oficial.
+3. La fachada crea la papeleta, aplica las tres capas de seguridad (timestamp, sello HMAC y marca de agua) y registra participación y papeleta en una sola transacción.
+4. La restricción única `(election_type, document_id)` impide el doble voto incluso con peticiones concurrentes.
+5. El elector recibe un comprobante; el dashboard lee únicamente los agregados anónimos de `ballot_records`.
+
+### 3.4 Detalle de patrones
+
+Los diagramas UML y la explicación de cada patrón están en [`avances/`](avances/) y la guía personal de estudio en [`docs/avances/`](docs/avances/). Este README resume la arquitectura; no duplica los diagramas.
 
 ---
 
-## 4. Avances del Proyecto
+## 4. Documentación por patrón
 
-La documentación completa de los avances del proyecto (abarcando los 5 patrones Creacionales y los 7 patrones Estructurales del catálogo GoF) se encuentra detallada en la carpeta `avances/` y enlazada a continuación:
+La documentación técnica de los 5 patrones creacionales y los 7 estructurales está en `avances/` y se enlaza a continuación. El recorrido de uso con capturas está en [`avances/manual_de_uso.md`](avances/manual_de_uso.md).
 
-### 4.1 Avance 1: Implementación del Patrón Singleton
+### 4.1 Patrón Singleton
 * **Módulo:** `src/core/config.py` (`ElectoralConfigManager`).
 * **Resumen:** Se centralizó el estado y la configuración global de la jornada electoral garantizando una única instancia en memoria con soporte de concurrencia segura (*thread-safety*) mediante *Double-Checked Locking*. Se implementó control de re-inicialización y un método de aislamiento para pruebas automatizadas.
-* **Documentación:** [Lectura en línea (Markdown)](avances/avance_1/patron_singleton.md) | [Descargar documento oficial (.docx)](<avances/avance_1/Avance Patrón de Diseño Singleton.docx>)
+* **Documentación:** [Lectura en línea (Markdown)](avances/avance_1/patron_singleton.md)
 
-### 4.2 Avance 2: Implementación del Patrón Factory Method
+### 4.2 Patrón Factory Method
 * **Módulo:** `src/modules/voting/ballot_factory.py` (`BallotCreator` y jerarquía `Ballot`).
 * **Resumen:** Se desacopló la lógica de emisión de votos de la instanciación concreta de papeletas electorales (`CandidateBallot`, `ReferendumBallot`, `BlankBallot`). Cumple con el principio Open/Closed (OCP), permitiendo incorporar nuevas modalidades de voto sin modificar el código base.
-* **Documentación:** [Lectura en línea (Markdown)](avances/avance_2/patron_factory_method.md) | [Descargar documento oficial (.docx)](<avances/avance_2/Avance Patrón de Diseño Factory Method.docx>)
+* **Documentación:** [Lectura en línea (Markdown)](avances/avance_2/patron_factory_method.md)
 
-### 4.3 Avance 3: Implementación del Patrón Abstract Factory
+### 4.3 Patrón Abstract Factory
 * **Módulo:** `src/modules/election/election_factory.py` (`ElectoralFamilyFactory`).
 * **Resumen:** Se implementó la creación de familias completas y coherentes de componentes según la jurisdicción de la elección (Nacional vs. Universitaria), abarcando validación de identidad, membrete oficial de papeleta y reglas de decisión para el escrutinio, garantizando la inversión de dependencias (DIP).
-* **Documentación:** [Lectura en línea (Markdown)](avances/avance_3/patron_abstract_factory.md) | [Descargar documento oficial (.docx)](<avances/avance_3/Avance Patrón de Diseño Abstract Factory.docx>)
+* **Documentación:** [Lectura en línea (Markdown)](avances/avance_3/patron_abstract_factory.md)
 
-### 4.4 Avance 4: Implementación del Patrón Builder
+### 4.4 Patrón Builder
 * **Módulo:** `src/modules/tally/report_builder.py` (`TallyReportBuilder` y `ElectoralTallyReport`).
-* **Resumen:** Se implementó la construcción progresiva y desacoplada del Acta Oficial de Escrutinio y Cierre de Urnas, evitando el antipatrón de constructor telescópico. Garantiza la inmutabilidad de los cómputos consolidados y añade sellado digital automático mediante hash criptográfico SHA-256.
-* **Documentación:** [Lectura en línea (Markdown)](avances/avance_4/patron_builder.md) | [Descargar documento oficial (.docx)](<avances/avance_4/Avance Patrón de Diseño Builder.docx>)
+* **Resumen:** Se implementó la construcción progresiva y desacoplada del Acta Oficial de Escrutinio y Cierre de Urnas, evitando el antipatrón de constructor telescópico. Consolida los cómputos y añade un sello de integridad SHA-256 al acta.
+* **Documentación:** [Lectura en línea (Markdown)](avances/avance_4/patron_builder.md)
 
-### 4.5 Avance 5: Implementación del Patrón Prototype
+### 4.5 Patrón Prototype
 * **Módulo:** `src/modules/election/station_prototype.py` (`VotingStation` y `StationPrototypeRegistry`).
 * **Resumen:** Se formalizó la clonación y replicación rápida de mesas y estaciones de votación a partir de plantillas operativas preconfiguradas. Se implementó copia profunda (*deep copy*) para asegurar el aislamiento de colecciones mutables (jurados y tarjetones autorizados) y personalización segura de terminales.
-* **Documentación:** [Lectura en línea (Markdown)](avances/avance_5/patron_prototype.md) | [Descargar documento oficial (.docx)](<avances/avance_5/Avance Patrón de Diseño Prototype.docx>)
+* **Documentación:** [Lectura en línea (Markdown)](avances/avance_5/patron_prototype.md)
 
-### 4.6 Avance 6: Implementación de los Patrones Adapter y Bridge
+### 4.6 Patrones Adapter y Bridge
 * **Módulos:** `src/modules/census/census_adapter.py` (`ICensusRegistry`, `JsonCensusAdapter`, `CsvCensusAdapter`) y `src/modules/transmission/bulletin_bridge.py` (`ElectoralBulletin`, `ITransmissionChannel`).
-* **Resumen:** Se implementó el patrón **Adapter** para homogeneizar censos electorales de fuentes heterogéneas (archivos planos CSV de Registraduría vs exportaciones JSON institucionales) hacia el modelo canónico del dominio. En paralelo, se implementó el patrón **Bridge** para desacoplar los tipos de boletines y alertas electorales de sus canales físicos de transporte (consola oficial, archivo persistente sellado y sink de auditoría en memoria), evitando la explosión combinatoria multidimensional.
+* **Resumen:** Se implementó el patrón **Adapter** para homogeneizar censos electorales de fuentes heterogéneas (archivos planos CSV de Registraduría vs exportaciones JSON institucionales) hacia el modelo canónico del dominio. En paralelo, se implementó el patrón **Bridge** para desacoplar los tipos de boletines y alertas electorales de sus canales físicos de transporte (consola oficial, archivo persistente y sink de auditoría en memoria), evitando la explosión combinatoria multidimensional.
 * **Documentación:** [Lectura en línea (Markdown)](avances/avance_6/patron_adapter_bridge.md)
 
-### 4.7 Avance 7: Implementación de los Patrones Composite, Decorator y Facade
+### 4.7 Patrones Composite, Decorator y Facade
 * **Módulos:** `src/modules/election/jurisdiction_composite.py` (`ElectoralUnit`, `VotingStationLeaf`, `ElectoralJurisdictionComposite`), `src/modules/voting/ballot_decorator.py` (`BallotSecurityDecorator`, `TimestampSecurityDecorator`, `DigitalSignatureDecorator`, `AuditWatermarkDecorator`), y `src/modules/facade/voting_facade.py` (`VotingSystemFacade`).
-* **Resumen:** Se implementó el patrón **Composite** para estructurar jerárquicamente el censo y mesas de votación (País -> Departamento/Puesto -> Mesa) tratando unidades individuales y agrupaciones de forma uniforme. Se implementó el patrón **Decorator** (profundización) para envolver dinámicamente las papeletas con capas de seguridad acumulativas (sello de tiempo ISO-8601, firma criptográfica HMAC-SHA256 y marca de agua de auditoría) sin alterar la clase base `Ballot`. Finalmente, se integró el patrón **Facade** como punto de entrada unificado que coordina todos los subsistemas creacionales y estructurales de cara a la interfaz web y la API REST.
+* **Resumen:** Se implementó el patrón **Composite** para estructurar jerárquicamente el censo y mesas de votación (País -> Departamento/Puesto -> Mesa) tratando unidades individuales y agrupaciones de forma uniforme. Se implementó el patrón **Decorator** para envolver dinámicamente las papeletas con capas de seguridad acumulativas (sello de tiempo ISO-8601, sello de integridad HMAC-SHA256 y marca de agua de auditoría) sin alterar la clase base `Ballot`. Finalmente, se integró el patrón **Facade** como punto de entrada unificado que coordina todos los subsistemas creacionales y estructurales de cara a la interfaz web y la API REST.
 * **Documentación:** [Lectura en línea (Markdown)](avances/avance_7/patron_composite_decorator_facade.md)
 
-### 4.8 Avance 8: Implementación de los Patrones Proxy y Flyweight
+### 4.8 Patrones Proxy y Flyweight
 * **Módulos:** `src/modules/security/access_proxy.py` (`ElectoralAccessProxy`, `UserSession`, `UserRole`) y `src/modules/voting/candidate_flyweight.py` (`CandidateMetadataFlyweight`, `CandidateFlyweightFactory`).
-* **Resumen:** Se implementó el patrón **Proxy** como sustituto protector que intercepta operaciones críticas del sistema electoral (apertura/cierre de urnas y emisión de votos) validando credenciales y roles (`ADMINISTRADOR`, `JURADO`, `AUDITOR`), además de registrar una bitácora inmutable de auditoría forense. En paralelo, se implementó el patrón **Flyweight** para compartir metadatos intrínsecos inmutables de los candidatos en memoria RAM, evitando duplicar texto y datos pesados al escalar a cientos de miles de sufragios. Con esto se completaron los **7 patrones estructurales** del catálogo GoF.
+* **Resumen:** Se implementó el patrón **Proxy** como sustituto protector que intercepta operaciones críticas del sistema electoral (apertura/cierre de urnas, emisión de votos y reinicio de jornada) validando la sesión del administrador y roles, además de registrar una bitácora de auditoría. En paralelo, se implementó el patrón **Flyweight** para compartir metadatos de los candidatos en memoria. El catálogo compartido alimenta el tarjetón y la validación server-side de candidatos; la papeleta persiste el identificador de la opción para no duplicar la ficha completa en cada voto. Con esto se completaron los **7 patrones estructurales** del catálogo GoF.
 * **Documentación:** [Lectura en línea (Markdown)](avances/avance_8/patron_proxy_flyweight.md)
 
 ---
@@ -298,57 +159,77 @@ source venv/bin/activate
 
 # 3. Instalar las dependencias oficiales del sistema
 pip install -r requirements.txt
+
+# 4. Crear la configuración local
+cp .env.example .env
+# Edita .env: ADMIN_PASSWORD, SECRET_KEY y, si quieres, AUTO_OPEN_POLLS
 ```
 
+> `.env.example` es la plantilla versionada; `.env` es tu configuración real y está en `.gitignore`.
+> Si borras `.env`, la app usa valores por defecto locales; si borras `.env.example`, puedes recuperarlo desde el repositorio.
+
 ### 5.3 Ejecución de la Plataforma Web y API
-Para iniciar el servidor interactivo con recarga automática:
+Para iniciar el servidor local (por defecto sin recarga, para no perder el estado de la jornada):
 ```bash
 python3 -m src.main
 # O directamente mediante Uvicorn:
-uvicorn src.main:app --host 127.0.0.1 --port 8000 --reload
+uvicorn src.main:app --host 127.0.0.1 --port 8000
 ```
 
 Una vez levantado el servidor, accede desde cualquier navegador a los siguientes módulos:
 * **Cabina de Votación Digital (Elector):** [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
   - Terminal limpia y sobria para el ciudadano/estudiante (sin anotaciones técnicas internas).
-  - Digita tu documento habilitado según el modo activo.
-  - Selecciona un candidato o **Voto en Blanco** (con retroalimentación visual de alto contraste inspirada en la *Urna Eletrônica* de Brasil).
-  - Emite el sufragio y obtén tu **Comprobante Digital con Sello de Tiempo y Firma HMAC** (Decorator).
+  - Digita tu documento y el PIN de demostración (`1234`) según el modo activo.
+  - Selecciona un candidato o **Voto en Blanco**.
+  - Emite el sufragio y obtén tu **Comprobante Digital con Sello de Tiempo y Sello HMAC**.
   - Al hacer clic en *Ver Resultados en Vivo*, serás dirigido al panel público sin riesgos de tocar controles de jurados.
 * **Panel de Transmisión de Resultados en Vivo (Público):** [http://127.0.0.1:8000/dashboard](http://127.0.0.1:8000/dashboard)
   - Visualización transparente en vivo para electores y observadores.
   - Gráfico dinámico Chart.js y tabla de desglose porcentual en tiempo real.
   - **No contiene botones administrativos destructivos.**
-* **Panel de Control Electoral y Jurados (Administración):** [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin)
+* **Panel de Control Electoral (Administración):** [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin)
+  - **Acceso protegido:** redirige a `/admin/login`; usa la cuenta definida en `.env`.
   - **Conmutador de Familia (Abstract Factory):** Alterna en caliente entre la *Elección Nacional (CNE)* y las *Elecciones Universitarias / Voceros (UDI)*.
   - **Control Operativo de Urna (Proxy):** Abrir y cerrar la jornada con credenciales protegidas de Administrador.
-  - **Cierre y Escrutinio Definitivo (Builder):** Emite el Acta Oficial inmutable con hash SHA-256 y muestra el veredicto oficial de victoria emitido por la `TallyRule` (Mayoría Absoluta vs. Mayoría Simple).
+  - **Cierre y Escrutinio Definitivo (Builder):** Emite el Acta Oficial con sello de integridad SHA-256 y muestra el veredicto oficial de victoria emitido por la `TallyRule` (Mayoría Absoluta vs. Mayoría Simple).
   - **Bitácora de Auditoría Forense (Proxy):** Inspecciona en vivo cada evento interceptado por el sistema.
 * **Documentación Interactiva Swagger UI:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
   - Prueba interactivamente cada endpoint REST (`/api/election/mode`, `/api/election/switch-mode`, `/api/auth/verify`, `/api/votes/cast`, `/api/tally/generate`).
 
 ### 5.4 Credenciales de Prueba en el Censo Electoral
-Para realizar pruebas demostrativas de sufragio y rechazo:
+
+El censo de demostración es sintético y contiene **41 electores por modalidad**. Todos usan el **PIN `1234`** para la simulación local.
+
 * **Modo Nacional (CNE - Cédula de Ciudadanía):**
-  - **Habilitados:** `10203040` (Laura Restrepo), `50607080` (Andrés Cepeda), `70809010` (Mariana Pajón), `80901020` (Julián Román).
-  - **Inhabilitado judicialmente:** `99999999` (Carlos Vives).
+  - **Habilitados:** `10203040`, `50607080`, `70809010`, `80901020`, `20000002`…`20000036`.
+  - **Inhabilitado:** `99999999`.
 * **Modo Universitario (UDI - Carnet Estudiantil):**
-  - **Habilitados:** `EST-2024` (Laura Restrepo), `EST-9012` (Andrés Cepeda), `EST-3341` (Mariana Pajón), `EST-5520` (Julián Román).
-  - **Inhabilitado / Sancionado:** `EST-9999` (Carlos Vives).
+  - **Habilitados:** `EST-2024`, `EST-9012`, `EST-3341`, `EST-5520`, `EST-1001`…`EST-1036`.
+  - **Inhabilitado:** `EST-9999`.
+* **Administrador local:** usuario `admin` y contraseña definida en `.env` (por defecto `admin1234`).
 
 ### 5.5 Ejecución de la Suite de Pruebas Automatizadas (Pytest)
-El proyecto cuenta con una suite completa de pruebas unitarias y de integración que valida el 100% de los patrones, conmutación de familias y endpoints:
+La suite usa una base separada (`test_e_voting.db`) y verifica autenticación con PIN, validación de candidato, voto único, concurrencia, protección de administración y reset de jornada:
 ```bash
 # Ejecutar todas las pruebas con reporte de cobertura en consola
 pytest tests/ --cov=src --cov-report=term-missing
 ```
-* **Resultado actual:** **10 pruebas pasando (100%)** con una cobertura del **87%** sobre todo el código fuente.
+* **Resultado actual:** **18 pruebas pasando (100%)** con una cobertura de líneas del **86%** sobre `src/`.
 
 ---
 
 ## 6. Demostración Visual y Próximos Pasos
 
-A partir de este hito, el prototipo es completamente funcional e interactivo:
-* **Autenticación e Ingreso:** Validación de identidad del elector contra el Censo (Adapter) y control de voto único (Proxy).
+A partir de este hito, el prototipo local es funcional e interactivo:
+* **Autenticación e ingreso:** documento + PIN del elector contra el censo y control de voto único persistido en SQLite.
 * **Cabina de Votación Digital:** Selección interactiva de candidatos (Flyweight) y emisión anónima con sellos de seguridad (Decorator).
 * **Panel de Escrutinio y Resultados:** Visualización gráfica en tiempo real (Chart.js) y generación del acta sellada con SHA-256 (Builder).
+### 6.1 Próximos pasos
+
+El roadmap funcional está en [`docs/registro_mejoras.md`](docs/registro_mejoras.md), sección 5. Los siguientes hitos son:
+
+1. Guardar `station_id` en el voto y agregar resultados por mesa.
+2. Mover instituciones, elecciones y candidatos a tablas normalizadas.
+3. Persistir la auditoría y las actas.
+4. Firmas asimétricas y verificación de recibos.
+5. Migración a PostgreSQL, backups y HTTPS.
