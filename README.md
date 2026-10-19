@@ -112,7 +112,14 @@ pip install -r requirements.txt
 python3 -m src.main
 ```
 
-Abre [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
+La aplicación queda disponible en:
+
+| Módulo | URL | Para qué sirve |
+|---|---|---|
+| Cabina de votación | [http://127.0.0.1:8000/](http://127.0.0.1:8000/) | Emitir el voto. |
+| Resultados en vivo | [http://127.0.0.1:8000/dashboard](http://127.0.0.1:8000/dashboard) | Consultar resultados públicos. |
+| Administración | [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin) | Panel administrativo; redirige a `/admin/login` si no hay sesión. |
+| Documentación de la API | [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) | Probar los endpoints REST. |
 
 No necesitas crear `.env` para la demo.
 
@@ -124,4 +131,4 @@ No necesitas crear `.env` para la demo.
 | Elector CNE (CC) | `10203040`, `50607080`, `70809010` | PIN `1234` |
 | Elector UDI (ID) | `EST-2024`, `EST-9012`, `EST-3341` | PIN `1234` |
 
-> Para cambiar las variables de `.env` o revisar la configuración, consulta el archivo de [Configuración y seguridad](docs/configuracion.md).
+> Para cambiar las variables de `.env` o revisar la configuración, consulta [Configuración y seguridad](docs/configuracion.md).
