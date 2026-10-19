@@ -72,7 +72,7 @@ Si algo falla, se muestra un mensaje sin revelar si el documento existe o no.
 
 Una vez verificado, el elector ve el tarjetón oficial con los candidatos y la opción de **Voto en Blanco**.
 
-<!-- Captura pendiente: reemplazar este comentario por ![Selección del tarjetón](capturas/02_seleccion_tarjeton.png) -->
+[Selección del tarjetón](capturas/02_seleccion_tarjeton.png)
 
 *Figura 2. Selección del tarjetón y voto en blanco.*
 
