@@ -27,10 +27,11 @@ pip install -r requirements.txt
 
 ```bash
 cp .env.example .env
-# edita ADMIN_PASSWORD y SECRET_KEY
 ```
 
-Si borras `.env`, la aplicación arranca con valores locales por defecto. Si borras `.env.example`, puedes recuperarlo desde el repositorio.
+Si no existe `.env`, la aplicación arranca con valores locales por defecto.
+
+Para cambiar credenciales, `SECRET_KEY` o revisar cada variable, consulta [Configuración y seguridad](configuracion.md).
 
 ### Arranque
 
@@ -54,7 +55,12 @@ La aplicación queda disponible en:
 - **Administrador:** usuario `admin` y contraseña definida en `.env` (por defecto `admin1234`).
 - **Electores:** todos usan el PIN `1234`.
 - **Documentos nacionales:** `10203040`, `50607080`, `70809010`, `80901020`, `20000002`, etc.
-- **Documentos universitarios:** `EST-2024`, `EST-9012`, `EST-3341`, `EST-5520`, `EST-1001`, etc.
+- **Documentos universitarios:** `EST-2024`, `EST-9012`, `EST-3341`, `EST-5520`, `EST-1002`, etc.
+
+| Modalidad | Electores | Habilitados | Inhabilitados |
+|---|---:|---:|---|
+| Nacional (CNE) | 41 | 37 | `99999999`, `20000001`, `20000013`, `20000025` |
+| Universitaria (UDI) | 41 | 37 | `EST-9999`, `EST-1001`, `EST-1013`, `EST-1025` |
 
 > El PIN `1234` es una credencial de simulación. No representa un mecanismo de autenticación de nivel electoral.
 

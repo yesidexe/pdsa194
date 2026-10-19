@@ -99,90 +99,27 @@ La plataforma se organizó con **12 patrones de diseño** agrupados en ocho docu
 
 ---
 
-## 5. Instrucciones de Ejecución y Pruebas del Sistema
+## 5. Ejecución rápida
 
-### 5.1 Requisitos Previos
-* **Python 3.12 o superior** instalado en el sistema.
-* Entorno virtual de Python configurado.
+Desde la raíz del proyecto:
 
-### 5.2 Configuración del Entorno Virtual e Instalación de Dependencias
 ```bash
-# 1. Crear el entorno virtual en la raíz del proyecto
 python3 -m venv venv
-
-# 2. Activar el entorno virtual
 source venv/bin/activate
-
-# 3. Instalar las dependencias oficiales del sistema
 pip install -r requirements.txt
-
-# 4. Crear la configuración local
-cp .env.example .env
-```
-
-> `.env.example` es la plantilla versionada; `.env` es tu configuración real y está en `.gitignore`.
-> Si copias la plantilla, cambia `SECRET_KEY` y ajusta `ADMIN_PASSWORD` antes de arrancar.
-> Genera una clave nueva con: `python3 -c "import secrets; print(secrets.token_hex(32))"`.
-
-### 5.3 Ejecución de la Plataforma Web y API
-Para iniciar el servidor local (por defecto sin recarga, para no perder el estado de la jornada):
-```bash
 python3 -m src.main
-# O directamente mediante Uvicorn:
-uvicorn src.main:app --host 127.0.0.1 --port 8000
 ```
 
-Una vez levantado el servidor, accede desde cualquier navegador a los siguientes módulos:
+Abre [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
 
-* **Cabina de Votación Digital (Elector):** [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
-  - Terminal limpia y sobria para el ciudadano o estudiante.
-  - Digita tu documento y el PIN de demostración (`1234`) según la modalidad activa.
-  - Selecciona un candidato o **Voto en Blanco**.
-  - Emite el sufragio y obtén tu **Comprobante Digital**.
-  - Al hacer clic en *Ver Resultados en Vivo*, serás dirigido al panel público sin controles administrativos.
+No necesitas crear `.env` para la demo.
 
-* **Panel de Resultados en Vivo (Público):** [http://127.0.0.1:8000/dashboard](http://127.0.0.1:8000/dashboard)
-  - Visualización transparente en vivo para electores y observadores.
-  - Gráfico dinámico y tabla de desglose porcentual en tiempo real.
-  - **No contiene botones administrativos destructivos.**
+**Credenciales de demo:**
 
-* **Panel de Control Electoral (Administración):** [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin)
-  - **Acceso protegido:** redirige a `/admin/login`; usa la cuenta definida en `.env`.
-  - **Conmutador de modalidad:** alterna entre Elección Nacional (CNE) y Elección Universitaria (UDI).
-  - **Control de jornada:** abre y cierra la urna con credenciales de administrador.
-  - **Cierre y escrutinio:** genera el Acta Oficial con sello de integridad y muestra el veredicto.
-  - **Gestión del censo:** consulta y actualiza los electores.
-  - **Auditoría:** revisa en vivo los eventos de la jornada.
+| Rol | Documento / usuario | Clave |
+|---|---|---|
+| Administrador | `admin` | `admin1234` |
+| Elector CNE | `10203040`, `50607080`, `70809010` | PIN `1234` |
+| Elector UDI | `EST-2024`, `EST-9012`, `EST-3341` | PIN `1234` |
 
-* **Documentación Interactiva de la API:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-  - Permite probar los endpoints REST desde el navegador.
-
-### 5.4 Credenciales de Demostración
-
-El censo es sintético. Todos los electores usan el **PIN `1234`**.
-
-| Modalidad | Electores | Habilitados | Inhabilitados |
-|---|---:|---:|---|
-| Nacional (CNE) | 41 | 37 | `99999999`, `20000001`, `20000013`, `20000025` |
-| Universitaria (UDI) | 41 | 37 | `EST-9999`, `EST-1001`, `EST-1013`, `EST-1025` |
-
-Ejemplos de documentos habilitados:
-
-* **Nacional:** `10203040`, `50607080`, `70809010`, `80901020`, `20000002`.
-* **Universitaria:** `EST-2024`, `EST-9012`, `EST-3341`, `EST-5520`, `EST-1002`.
-
-**Administrador local:**
-
-* **Usuario:** `admin`
-* **Contraseña:** `admin1234` (o la que definas en `ADMIN_PASSWORD` dentro de `.env`).
-
-> Estas credenciales son solo para la demostración local. El censo no contiene datos reales y no se deben cargar datos personales reales.
-
-### 5.5 Ejecución de la Suite de Pruebas Automatizadas (Pytest)
-
-La suite usa una base separada (`test_e_voting.db`) y verifica autenticación con PIN, validación de candidato, voto único, concurrencia, protección de administración y reset de jornada:
-
-```bash
-# Ejecutar todas las pruebas con reporte de cobertura en consola
-pytest tests/ --cov=src --cov-report=term-missing
-```
+> Para una configuración mas profunda, como cambiar las variables de `.env` es necesario consultar el archivo de [Configuración](docs/configuracion.md).
