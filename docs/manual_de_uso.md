@@ -84,7 +84,7 @@ Una vez verificado, el elector ve el tarjetón oficial con los candidatos y la o
 
 Al confirmar, se muestra un comprobante con:
 
-<!-- Captura pendiente: reemplazar este comentario por ![Comprobante digital del voto](capturas/03_comprobante.png) -->
+[Comprobante digital del voto](capturas/03_comprobante.png)
 
 *Figura 3. Comprobante digital del voto.*
 
@@ -99,7 +99,7 @@ El comprobante no contiene el documento del votante.
 
 El enlace **Ver resultados en vivo** lleva al dashboard:
 
-<!-- Captura pendiente: reemplazar este comentario por ![Panel público de resultados en vivo](capturas/04_resultados_publicos.png) -->
+[Panel público de resultados en vivo](capturas/04_resultados_publicos.png)
 
 *Figura 4. Panel público de resultados en vivo.*
 
