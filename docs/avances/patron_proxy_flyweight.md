@@ -13,14 +13,14 @@
 
 ## 2. Justificación y Problema que Resuelven en el Dominio
 
-El sistema aborda dos retos fundamentales de la plataforma: **la seguridad de privilegios** y **la eficiencia de memoria a escala**.
+El sistema aborda dos retos concretos de la plataforma: **la seguridad de privilegios** y **el catálogo compartido de candidatos**.
 
-### 2.1 Justificación de PROXY: Control de Privilegios y Auditoría Forense
+### 2.1 Justificación de PROXY: Control de Privilegios y Auditoría de Operaciones
 En un sistema electoral, no todos los usuarios pueden ejecutar cualquier operación:
 * Solo los **ADMINISTRADORES** pueden abrir formalmente la jornada electoral o reconfigurar los parámetros de las mesas.
 * Solo los **JURADOS DE MESA** o electores autenticados pueden registrar votos en la cabina.
 * Solo los **JURADOS y ADMINISTRADORES** debidamente identificados pueden cerrar urnas y firmar el Acta de Escrutinio.
-* Los **AUDITORES** tienen acceso de solo lectura para fiscalizar la transmisión de resultados y el estado de las urnas.
+* El rol **AUDITOR** está definido para fiscalizar resultados y estado de urnas; en la demo la consulta pública del dashboard no exige sesión.
 
 **El Problema de Seguridad sin Proxy:**
 Si expusiéramos directamente el `VotingSystemFacade` al cliente web o API, tendríamos que ensuciar la lógica de negocio con verificaciones de permisos repetitivas en cada método, violando el Principio de Responsabilidad Única (SRP).
@@ -30,15 +30,15 @@ Si expusiéramos directamente el `VotingSystemFacade` al cliente web o API, tend
 2. Registra un evento de auditoría en la bitácora (`_audit_log`), documentando quién, cuándo y con qué resultado se intentó la operación.
 3. Si la verificación es exitosa, delega la llamada a `VotingSystemFacade`; si no, bloquea la acción arrojando `PermissionError`.
 
-### 2.2 Justificación de FLYWEIGHT: Eficiencia de Memoria a Escala
-En una elección masiva (a nivel universitario con miles de votantes, o a nivel nacional con millones de ciudadanos), cada sufragio emitido por un candidato contiene información descriptiva:
+### 2.2 Justificación de FLYWEIGHT: Catálogo Compartido de Candidatos
+Cada sufragio emitido por un candidato contiene información descriptiva que no cambia entre votos:
 * Nombre completo del candidato.
 * Partido político o movimiento ciudadano.
 * Lema de campaña.
 * Logotipo y color oficial del tarjetón.
 
-**El Problema de Consumo en Memoria:**
-Si cada papeleta instanciara sus propias copias de estos textos e imágenes, se repetiría información innecesariamente.
+**El Problema de Duplicación:**
+Si cada papeleta instanciara sus propias copias de estos textos, se repetiría información innecesariamente. En esta demo el beneficio es de claridad y consistencia; la escala real sería mayor en una elección masiva.
 
 **Solución Flyweight (Separación de Estados):**
 * **Estado Intrínseco (Compartido e Inmutable):** Modelado en `CandidateMetadataFlyweight`. Contiene los datos fijos del candidato (`candidate_id`, `candidate_name`, `party_name`, `slogan`, `color`). Este objeto existe **una única vez en memoria por candidato** y se comparte en el catálogo y en la validación server-side. La papeleta persistida guarda el `candidate_id`, no una copia completa de la ficha.
@@ -74,8 +74,10 @@ classDiagram
     class VotingSystemFacade {
         +open_polls void
         +close_polls void
-        +verify_voter(document_id) Dict
-        +cast_secure_vote(...) Dict
+        +verify_voter(document_id, pin, check_existing=True) Dict
+        +cast_secure_vote(document_id, pin, ballot_type, selection_kwargs, security_layers) Dict
+        +reset_election void
+        +is_tallied bool
         +close_and_generate_tally(...) ElectoralTallyReport
         +get_dashboard_summary Dict
     }
@@ -88,8 +90,9 @@ classDiagram
         -_record_audit_event(action, user, role, status, details) void
         +open_polls(session: UserSession) void
         +close_polls(session: UserSession) void
-        +verify_voter(document_id, session) Dict
-        +cast_secure_vote(..., session) Dict
+        +verify_voter(document_id, pin, session=None) Dict
+        +cast_secure_vote(document_id, pin, ballot_type, selection_kwargs, session=None, ...) Dict
+        +reset_election(session) int
         +close_and_generate_tally(session, signatures, destination) ElectoralTallyReport
         +get_dashboard_summary Dict
     }
@@ -116,7 +119,7 @@ class ElectoralAccessProxy:
             raise PermissionError("Acceso denegado: Se requiere rol ADMINISTRADOR para abrir la jornada electoral.")
 
         self._record_audit_event("OPEN_POLLS", session.user_id, session.role.value, "AUTORIZADO")
-        self._facade.open_polls
+        self._facade.open_polls()
 
     def close_and_generate_tally(
         self,
@@ -190,7 +193,7 @@ class CandidateFlyweightFactory:
 
     @classmethod
     def get_candidate(cls, candidate_id: str, **kwargs) -> CandidateMetadataFlyweight:
-        c_id = str(candidate_id).strip
+        c_id = str(candidate_id).strip()
         if c_id not in cls._flyweights:
             cls._flyweights[c_id] = CandidateMetadataFlyweight(candidate_id=c_id, **kwargs)
         return cls._flyweights[c_id]

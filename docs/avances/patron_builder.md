@@ -15,8 +15,8 @@ Al finalizar una jornada de votación electrónica, el sistema debe generar el *
 * Lote de identificadores de las mesas de votación escrutadas y consolidadas.
 * Desglose numérico de votos válidos por candidato, votos en blanco y votos nulos.
 * Cómputo global y totalizado de sufragios.
-* Registro de firmas digitales o códigos de autenticación de los jurados de mesa.
-* Sello criptográfico digital (hash SHA-256) generado sobre el contenido del acta para garantizar inmutabilidad.
+* Registro de firmas o códigos de autenticación de los jurados de mesa.
+* Sello de integridad SHA-256 generado sobre el contenido del acta para detectar alteraciones.
 
 ### 2.1 El Antipatrón Evitado: Constructor Telescópico (*Telescoping Constructor*)
 Si intentáramos construir este objeto directamente mediante el constructor de clase `__init__`, caeríamos en el antipatrón de constructor telescópico:
@@ -52,6 +52,7 @@ classDiagram
         +add_table_batch(table_ids)* TallyReportBuilder
         +set_votes(candidate_votes, blank_votes, null_votes)* TallyReportBuilder
         +add_officer_signature(signature_code)* TallyReportBuilder
+        +set_winner_verdict(verdict)* TallyReportBuilder
         +build* ElectoralTallyReport
     }
 
@@ -69,6 +70,7 @@ classDiagram
         +add_table_batch(table_ids) OfficialTallyReportBuilder
         +set_votes(candidate_votes, blank_votes, null_votes) OfficialTallyReportBuilder
         +add_officer_signature(signature_code) OfficialTallyReportBuilder
+        +set_winner_verdict(verdict) OfficialTallyReportBuilder
         +build ElectoralTallyReport
     }
 
@@ -84,6 +86,7 @@ classDiagram
         +int total_votes
         +List~str~ officer_signatures
         +str integrity_hash
+        +str winner_verdict
         +to_formatted_summary str
     }
 
@@ -114,6 +117,7 @@ class ElectoralTallyReport:
     total_votes: int
     officer_signatures: List[str]
     integrity_hash: str
+    winner_verdict: Optional[str] = None
 
     def to_formatted_summary(self) -> str:
         # Formateo legible y legal del acta para auditoría
@@ -123,6 +127,8 @@ class ElectoralTallyReport:
 ### 4.2 Constructor Abstracto y Concreto (`TallyReportBuilder` / `OfficialTallyReportBuilder`)
 
 ```python
+from datetime import datetime, timezone
+from typing import Optional
 import hashlib
 import json
 
@@ -143,11 +149,14 @@ class TallyReportBuilder(ABC):
     def add_officer_signature(self, signature_code: str) -> "TallyReportBuilder": pass
 
     @abstractmethod
+    def set_winner_verdict(self, verdict: str) -> "TallyReportBuilder": pass
+
+    @abstractmethod
     def build(self) -> ElectoralTallyReport: pass
 
 class OfficialTallyReportBuilder(TallyReportBuilder):
     def __init__(self) -> None:
-        self.reset
+        self.reset()
 
     def reset(self) -> "OfficialTallyReportBuilder":
         self._election_title = "Jornada Electoral"
@@ -157,6 +166,7 @@ class OfficialTallyReportBuilder(TallyReportBuilder):
         self._blank_votes = 0
         self._null_votes = 0
         self._officer_signatures = []
+        self._winner_verdict: Optional[str] = None
         return self
 
     def set_header(self, election_title: str, jurisdiction: str) -> "OfficialTallyReportBuilder":
@@ -179,23 +189,28 @@ class OfficialTallyReportBuilder(TallyReportBuilder):
             self._officer_signatures.append(signature_code)
         return self
 
+    def set_winner_verdict(self, verdict: str) -> "OfficialTallyReportBuilder":
+        self._winner_verdict = verdict
+        return self
+
     def build(self) -> ElectoralTallyReport:
-        total = sum(self._candidate_votes.values) + self._blank_votes + self._null_votes
-        now = datetime.utcnow
+        total = sum(self._candidate_votes.values()) + self._blank_votes + self._null_votes
+        now = datetime.now(timezone.utc)
 
         # Sellado criptográfico automático del estado final
         payload = {
             "title": self._election_title,
             "jurisdiction": self._jurisdiction,
-            "timestamp": now.isoformat,
+            "timestamp": now.isoformat(),
             "tables": sorted(self._table_ids),
             "candidate_votes": self._candidate_votes,
             "blank": self._blank_votes,
             "null": self._null_votes,
             "total": total,
             "signatures": self._officer_signatures,
+            "winner_verdict": self._winner_verdict,
         }
-        hash_digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest
+        hash_digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()
 
         return ElectoralTallyReport(
             election_title=self._election_title,
@@ -208,6 +223,7 @@ class OfficialTallyReportBuilder(TallyReportBuilder):
             total_votes=total,
             officer_signatures=list(self._officer_signatures),
             integrity_hash=hash_digest,
+            winner_verdict=self._winner_verdict,
         )
 ```
 
@@ -238,8 +254,8 @@ class TallyReportDirector:
 ### 5.1 Inmutabilidad parcial del acta
 `frozen=True` impide reasignar los campos del acta, pero las listas y diccionarios internos siguen siendo mutables. Para una inmutabilidad estricta habría que usar tuplas o copias defensivas; hoy el sello SHA-256 permite detectar si el contenido cambió.
 
-### 5.2 Sellado Criptográfico Integrado
-El método `build` calcula de forma determinista el resumen criptográfico SHA-256 de todas las partes ensambladas. El acta nace sellada digitalmente.
+### 5.2 Sello de integridad SHA-256
+El método `build` calcula de forma determinista un resumen SHA-256 de todas las partes ensambladas. El acta nace con un sello de integridad verificable; no es una firma digital asimétrica.
 
 ### 5.3 Relación con Principios SOLID
 * **Single Responsibility Principle (SRP):** El reporte sólo modela los datos consolidados; el constructor se encarga exclusivamente de las reglas de ensamble, validación de rangos y firmado.

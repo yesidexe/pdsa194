@@ -60,14 +60,14 @@ class ElectoralConfigManager:
     """Gestiona la configuración global de la jornada electoral garantizando una única instancia."""
 
     _instance: Optional["ElectoralConfigManager"] = None
-    _lock: threading.Lock = threading.Lock
+    _lock: threading.Lock = threading.Lock()
     _initialized: bool = False
 
     def __new__(cls, *args, **kwargs) -> "ElectoralConfigManager":
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
-                    cls._instance = super.__new__(cls)
+                    cls._instance = super().__new__(cls)
         return cls._instance
 
     def __init__(
@@ -99,7 +99,7 @@ class ElectoralConfigManager:
 
     @classmethod
     def reset_for_testing(cls) -> None:
-        """Permite reiniciar la instancia en entornos controlados de prueba."""
+        """Permite reiniciar la instancia al reconstruir el sistema o en pruebas."""
         with cls._lock:
             cls._instance = None
             cls._initialized = False
@@ -110,9 +110,9 @@ class ElectoralConfigManager:
 ## 5. Análisis de Ingeniería de Software
 
 ### 5.1 Seguridad en Hilos (*Thread-Safety*)
-Se implementó la técnica de comprobación con doble bloqueo (*Double-Checked Locking*):
+Se implementó doble comprobación con bloqueo, o double-checked locking.
 1. Se verifica si la variable `_instance` es nula antes de adquirir el cerrojo.
-2. Si es nula, se entra al bloque `with cls._lock` y se vuelve a comprobar antes de asignar `super.__new__(cls)`.
+2. Si es nula, se entra al bloque `with cls._lock` y se vuelve a comprobar antes de asignar `super().__new__(cls)`.
 3. Esto evita el costo de sincronización en llamadas posteriores una vez creada la instancia.
 
 ### 5.2 Control de Re-inicialización
@@ -120,4 +120,4 @@ En Python, cada vez que se llama al constructor de clase, `__init__` se invoca d
 
 ### 5.3 Relación con Principios SOLID
 * **Single Responsibility Principle (SRP):** La clase asume la responsabilidad exclusiva de salvaguardar y exponer los parámetros centrales de la jornada electoral, centralizando su ciclo de vida.
-* **Aislamiento para Pruebas (Testability):** Se incorporó el método `reset_for_testing` para mitigar el acoplamiento global en pruebas automatizadas y asegurar aislamiento entre ejecuciones.
+* **Aislamiento para Pruebas y Reconstrucción (Testability):** Se incorporó `reset_for_testing` para aislar pruebas y para reconstruir la instancia cuando se cambia de modalidad.

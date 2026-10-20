@@ -28,16 +28,16 @@ Un proceso electoral se organiza de forma natural como un árbol jerárquico par
 
 ### 2.2 Justificación de DECORATOR: Seguridad Dinámica del Voto
 Una papeleta emitida (`Ballot`) almacena la opción elegida por el votante. No obstante, según la legislación de la jornada y los requerimientos de auditoría, el sufragio requiere capas de seguridad añadidas:
-1. Sello de tiempo UTC certificado con reloj atómico oficial.
+1. Sello de tiempo UTC.
 2. Sello de integridad HMAC-SHA256 con clave del servicio y terminal de emisión.
-3. Código de recibo y marca de agua forense para verificación del ciudadano.
+3. Código de recibo y marca de agua para verificación del ciudadano.
 
 **El Antipatrón Evitado (Explosión de Subclases):**
 Si intentáramos modelar estas combinaciones mediante herencia de clases, tendríamos una explosión de $2^n$ clases (`BallotConTimestamp`, `BallotConTimestampYFirma`, `BallotConTimestampFirmaYMarca`, etc.).
 **Solución Decorator:** Envuelve dinámicamente el voto en memoria en tiempo de ejecución. Permite anidar tantas capas de seguridad como la elección demande (`DigitalSignatureDecorator(TimestampSecurityDecorator(ballot))`) sin alterar la entidad base `Ballot` y garantizando que el objeto siga cumpliendo la interfaz de sufragio.
 
 ### 2.3 Justificación de FACADE: La Puerta de Entrada hacia la Interfaz Gráfica
-Hasta este punto, el sistema cuenta con **9 patrones GoF implementados y coordinados**. Si la futura capa web (FastAPI, Swagger UI o plantillas HTML) tuviera que interactuar directamente con cada módulo:
+El sistema ya tiene implementados y coordinados los patrones creacionales y estructurales que necesita la fachada. Si la futura capa web (FastAPI, Swagger UI o plantillas HTML) tuviera que interactuar directamente con cada módulo:
 - Cada endpoint requeriría decenas de líneas de código instanciando fábricas, adaptadores de censo, constructores de actas y validadores.
 - La capa de presentación quedaría fuertemente acoplada a las clases internas del dominio.
 
@@ -113,7 +113,7 @@ class VotingStationLeaf(ElectoralUnit):
     """Hoja (Leaf) que representa una mesa de votación individual terminal."""
 
     def __init__(self, station: VotingStation) -> None:
-        super.__init__(unit_id=station.station_id, name=f"Mesa {station.station_id}")
+        super().__init__(unit_id=station.station_id, name=f"Mesa {station.station_id}")
         self.station = station
 
     def count_stations(self) -> int:
@@ -126,8 +126,8 @@ class ElectoralJurisdictionComposite(ElectoralUnit):
     """Compuesto (Composite) que agrupa unidades electorales recursivamente."""
 
     def __init__(self, unit_id: str, name: str, jurisdiction_type: str = "ZONA") -> None:
-        super.__init__(unit_id, name)
-        self.jurisdiction_type = jurisdiction_type.upper
+        super().__init__(unit_id, name)
+        self.jurisdiction_type = jurisdiction_type.upper()
         self._children: List[ElectoralUnit] = []
 
     def add(self, unit: ElectoralUnit) -> ElectoralJurisdictionComposite:
@@ -136,12 +136,12 @@ class ElectoralJurisdictionComposite(ElectoralUnit):
         return self
 
     def count_stations(self) -> int:
-        return sum(child.count_stations for child in self._children)
+        return sum(child.count_stations() for child in self._children)
 
     def get_station_ids(self) -> List[str]:
         station_ids: List[str] = []
         for child in self._children:
-            station_ids.extend(child.get_station_ids)
+            station_ids.extend(child.get_station_ids())
         return station_ids
 ```
 
@@ -208,11 +208,11 @@ class BallotSecurityDecorator(Ballot, ABC):
     """Decorador abstracto base que envuelve una papeleta conservando su contrato."""
 
     def __init__(self, wrapped_ballot: Ballot) -> None:
-        super.__init__(ballot_id=wrapped_ballot.ballot_id, issued_at=wrapped_ballot.issued_at)
+        super().__init__(ballot_id=wrapped_ballot.ballot_id, issued_at=wrapped_ballot.issued_at)
         object.__setattr__(self, "_wrapped_ballot", wrapped_ballot)
 
     def get_selection(self) -> str:
-        return self.wrapped_ballot.get_selection
+        return self.wrapped_ballot.get_selection()
 
     @abstractmethod
     def get_security_metadata(self) -> Dict[str, Any]:
@@ -222,18 +222,18 @@ class DigitalSignatureDecorator(BallotSecurityDecorator):
     """Decorador concreto que sella criptográficamente la papeleta mediante HMAC-SHA256."""
 
     def __init__(self, wrapped_ballot: Ballot, signing_key: str, officer_token: str) -> None:
-        super.__init__(wrapped_ballot)
+        super().__init__(wrapped_ballot)
         signature = self._compute_signature(signing_key, officer_token)
         object.__setattr__(self, "_signature", signature)
         object.__setattr__(self, "_officer_token", officer_token)
 
     def _compute_signature(self, signing_key: str, officer_token: str) -> str:
-        canonical_content = f"{self.ballot_id}:{self.get_selection}:{self.issued_at.isoformat}:{officer_token}"
+        canonical_content = f"{self.ballot_id}:{self.get_selection()}:{self.issued_at.isoformat()}:{officer_token}"
         return hmac.new(
             key=signing_key.encode("utf-8"),
             msg=canonical_content.encode("utf-8"),
             digestmod=hashlib.sha256,
-        ).hexdigest
+        ).hexdigest()
 
     def verify_signature(self, signing_key: str) -> bool:
         expected = self._compute_signature(signing_key, getattr(self, "_officer_token"))
@@ -268,8 +268,10 @@ classDiagram
         +spawn_station(template_key, station_id, terminal_code, officers) VotingStation
         +open_polls void
         +close_polls void
-        +verify_voter(document_id) Dict
-        +cast_secure_vote(document_id, ballot_type, kwargs, security_layers) Dict
+        +verify_voter(document_id, pin, check_existing=True) Dict
+        +cast_secure_vote(document_id, pin, ballot_type, kwargs, security_layers) Dict
+        +reset_election int
+        +is_tallied bool
         +emit_preliminary_bulletin(bulletin_number, destination) bool
         +close_and_generate_tally(signatures, destination) ElectoralTallyReport
         +get_dashboard_summary Dict
@@ -294,23 +296,29 @@ La clase `VotingSystemFacade` concentra y coordina todos los subsistemas en mét
 class VotingSystemFacade:
     """Fachada unificada de alto nivel para el sistema electoral."""
 
-    def __init__(self, institution_name: str, election_title: str) -> None:
+    def __init__(self, institution_name: str, election_title: str, election_type: str = "NATIONAL") -> None:
+        self.election_type = election_type.upper().strip()
         self._config = ElectoralConfigManager(institution_name, election_title)
-        self._station_registry = StationPrototypeRegistry
-        self._candidate_creator = CandidateBallotCreator
-        self._referendum_creator = ReferendumBallotCreator
-        self._blank_creator = BlankBallotCreator
-        self._tally_builder = OfficialTallyReportBuilder
-        self._ballot_box: List[Ballot] = []
-        self._voted_citizens: Set[str] = set
+        self._station_registry = StationPrototypeRegistry()
+        self._candidate_creator = CandidateBallotCreator()
+        self._referendum_creator = ReferendumBallotCreator()
+        self._blank_creator = BlankBallotCreator()
+        self._tally_builder = OfficialTallyReportBuilder()
+        self._census: Optional[ICensusRegistry] = None
+        self._family_factory: Optional[ElectoralFamilyFactory] = None
+        self._transmission_channel: Optional[ITransmissionChannel] = None
+        self._jurisdiction_tree: Optional[ElectoralUnit] = None
+        self._tally_generated: bool = False
 
-    def verify_voter(self, document_id: str) -> Dict[str, Any]:
-        # Valida que la urna esté abierta, formato del documento, no duplicidad y censo
+    def verify_voter(self, document_id: str, pin: str, check_existing: bool = True) -> Dict[str, Any]:
+        # Valida urna abierta, formato, PIN contra el censo y voto único
         ...
 
-    def cast_secure_vote(self, document_id: str, ballot_type: str, selection_kwargs: Dict[str, Any],
-                         security_layers: List[str] = ("timestamp", "signature", "watermark")) -> Dict[str, Any]:
-        # Valida elegibilidad, fabrica papeleta, aplica decoradores y custodia en urna anónima
+    def cast_secure_vote(self, document_id: str, pin: str, ballot_type: str,
+                         selection_kwargs: Dict[str, Any],
+                         security_layers: Optional[List[str]] = None) -> Dict[str, Any]:
+        # Valida elegibilidad, fabrica papeleta, aplica decoradores y persiste
+        # la participación y la papeleta anónima en SQLite
         ...
 
     def close_and_generate_tally(self, officer_signatures: List[str],

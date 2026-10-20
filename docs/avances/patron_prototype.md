@@ -141,7 +141,7 @@ class StationPrototypeRegistry:
     def get_clone(self, prototype_key: str) -> VotingStation:
         if prototype_key not in self._prototypes:
             raise KeyError(f"Plantilla prototipo '{prototype_key}' no registrada en el catálogo.")
-        return self._prototypes[prototype_key].clone
+        return self._prototypes[prototype_key].clone()
 ```
 
 ---

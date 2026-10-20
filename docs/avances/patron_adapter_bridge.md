@@ -3,7 +3,7 @@
 ## 1. Identificación del patrón
 * **Patrones de Diseño:** Adapter y Bridge (Patrones Estructurales).
 * **Elementos del Sistema:**
-  * **Módulo de Censo Electoral (Adapter):** Interfaz canónica `ICensusRegistry`, entidad inmutable `VoterCensusRecord`, y adaptadores concretos `JsonCensusAdapter` y `CsvCensusAdapter`.
+  * **Módulo de Censo Electoral (Adapter):** Interfaz canónica `ICensusRegistry`, entidad inmutable `VoterCensusRecord`, y adaptadores concretos `JsonCensusAdapter`, `CsvCensusAdapter` y `SqliteCensusAdapter` (fuente activa en la demo).
   * **Módulo de Transmisión Multicanal (Bridge):** Abstracción base `ElectoralBulletin` con sus refinamientos (`PreliminaryBulletin`, `AuditAlertBulletin`, `OfficialClosingBulletin`), conectada mediante puente a la interfaz implementadora `ITransmissionChannel` (`ConsoleTransmissionChannel`, `FileTransmissionChannel`, `MemoryAuditSinkTransmissionChannel`).
 * **Ubicación del Código:**
   * `src/modules/census/census_adapter.py`
@@ -29,7 +29,7 @@ Durante el transcurso de las elecciones y al cierre de urnas, se requiere difund
 * **Dimensión 1 (El "Qué" se transmite - Abstracción):** Distintos tipos de boletines con información y propósitos disímiles:
   - *Boletín Preliminar:* Avance parcial del conteo de votos en vivo con porcentaje de mesas informadas.
   - *Alerta de Seguridad/Auditoría:* Notificación urgente por incidencias críticas (ej. intento de doble sufragio, alteración de precinto).
-  - *Boletín de Cierre Oficial:* Acta definitiva de escrutinio sellada con hash criptográfico SHA-256.
+  - *Boletín de Cierre Oficial:* Acta definitiva de escrutinio con sello de integridad SHA-256.
 * **Dimensión 2 (El "Cómo / Dónde" se despacha - Implementador):** Múltiples medios técnicos o canales de salida:
   - *Consola / Log de Operaciones del Sistema.*
   - *Almacenamiento Local Sellado en Archivo de Disco.*
@@ -60,6 +60,8 @@ classDiagram
         +is_eligible(document_id: str)* bool
         +get_voter_record(document_id: str)* Optional~VoterCensusRecord~
         +get_total_registered* int
+        +get_total_eligible* int
+        +authenticate(document_id, pin)* Optional~VoterCensusRecord~
     }
 
     %% Modelo Canónico de Dominio
@@ -123,6 +125,16 @@ class ICensusRegistry(ABC):
     def get_total_registered(self) -> int:
         """Retorna el número total de votantes registrados en el censo adaptado."""
         pass
+
+    @abstractmethod
+    def get_total_eligible(self) -> int:
+        """Retorna cuántos electores están habilitados para votar."""
+        pass
+
+    @abstractmethod
+    def authenticate(self, document_id: str, pin: str) -> Optional[VoterCensusRecord]:
+        """Valida documento + PIN y devuelve la ficha canónica."""
+        pass
 ```
 
 #### Adaptador para Esquemas JSON Heterogéneos (`JsonCensusAdapter`):
@@ -138,9 +150,9 @@ class JsonCensusAdapter(ICensusRegistry):
     def _parse_payload(self, data: Dict[str, Any]) -> None:
         items = data.get("electores", data.get("estudiantes", data.get("citizens", [])))
         for item in items:
-            doc = str(item.get("documento_id", item.get("codigo", item.get("id", "")))).strip
-            name = item.get("nombre_completo", item.get("nombres", item.get("name", "Desconocido"))).strip
-            station = item.get("mesa_asignada", item.get("mesa", item.get("station", "MESA-GENERAL"))).strip
+            doc = str(item.get("documento_id", item.get("codigo", item.get("id", "")))).strip()
+            name = item.get("nombre_completo", item.get("nombres", item.get("name", "Desconocido"))).strip()
+            station = item.get("mesa_asignada", item.get("mesa", item.get("station", "MESA-GENERAL"))).strip()
             eligible = bool(item.get("habilitado", item.get("activo", item.get("eligible", True))))
 
             if doc:
@@ -153,11 +165,11 @@ class JsonCensusAdapter(ICensusRegistry):
                 )
 
     def is_eligible(self, document_id: str) -> bool:
-        record = self._records_by_id.get(str(document_id).strip)
+        record = self._records_by_id.get(str(document_id).strip())
         return record.is_eligible if record else False
 
     def get_voter_record(self, document_id: str) -> Optional[VoterCensusRecord]:
-        return self._records_by_id.get(str(document_id).strip)
+        return self._records_by_id.get(str(document_id).strip())
 
     def get_total_registered(self) -> int:
         return len(self._records_by_id)
@@ -173,13 +185,13 @@ class CsvCensusAdapter(ICensusRegistry):
         self._parse_csv(csv_content, delimiter)
 
     def _parse_csv(self, csv_content: str, delimiter: str) -> None:
-        reader = csv.DictReader(io.StringIO(csv_content.strip), delimiter=delimiter)
+        reader = csv.DictReader(io.StringIO(csv_content.strip()), delimiter=delimiter)
         for row in reader:
-            norm = {k.strip.lower: v.strip for k, v in row.items if k}
+            norm = {k.strip().lower(): v.strip() for k, v in row.items() if k}
             doc = norm.get("cedula") or norm.get("documento") or norm.get("document_id", "")
             name = norm.get("nombre") or norm.get("nombre_completo") or norm.get("full_name", "Desconocido")
             station = norm.get("mesa") or norm.get("mesa_asignada") or "MESA-GENERAL"
-            status_raw = (norm.get("habilitado") or norm.get("estado", "si")).lower
+            status_raw = (norm.get("habilitado") or norm.get("estado", "si")).lower()
             eligible = status_raw in ("si", "sí", "true", "1", "habilitado", "activo")
 
             if doc:
@@ -192,14 +204,55 @@ class CsvCensusAdapter(ICensusRegistry):
                 )
 
     def is_eligible(self, document_id: str) -> bool:
-        record = self._records_by_id.get(str(document_id).strip)
+        record = self._records_by_id.get(str(document_id).strip())
         return record.is_eligible if record else False
 
     def get_voter_record(self, document_id: str) -> Optional[VoterCensusRecord]:
-        return self._records_by_id.get(str(document_id).strip)
+        return self._records_by_id.get(str(document_id).strip())
 
     def get_total_registered(self) -> int:
         return len(self._records_by_id)
+
+    def get_total_eligible(self) -> int:
+        return sum(1 for record in self._records_by_id.values() if record.is_eligible)
+
+    def authenticate(self, document_id: str, pin: str) -> Optional[VoterCensusRecord]:
+        # JSON/CSV no traen PIN verificable: se falla cerrado.
+        return None
+```
+
+#### Adaptador SQLite (fuente activa de la demo)
+`SqliteCensusAdapter` implementa el mismo Target, pero consulta la tabla `census_citizens` y valida el PIN con `verify_pin`. Es el adaptador que usa hoy la fachada en la demo; JSON y CSV quedan como ejemplos de integración.
+
+```python
+from src.core.database import CitizenModel, SessionLocal, init_db
+from src.core.security import verify_pin
+
+class SqliteCensusAdapter(ICensusRegistry):
+    def __init__(self, election_type: str = "NATIONAL") -> None:
+        self.election_type = election_type.upper().strip()
+        init_db()
+
+    def authenticate(self, document_id: str, pin: str) -> Optional[VoterCensusRecord]:
+        session = SessionLocal()
+        try:
+            citizen = session.query(CitizenModel).filter(
+                CitizenModel.document_id == str(document_id).strip(),
+                CitizenModel.election_type == self.election_type,
+            ).first()
+            if not citizen or not citizen.is_eligible:
+                return None
+            if not verify_pin(pin, citizen.pin_hash):
+                return None
+            return VoterCensusRecord(
+                document_id=citizen.document_id,
+                full_name=citizen.full_name,
+                assigned_station_id=citizen.assigned_station_id,
+                is_eligible=citizen.is_eligible,
+                source_type="SQLITE_DATABASE",
+            )
+        finally:
+            session.close()
 ```
 
 ---
@@ -304,7 +357,7 @@ class ITransmissionChannel(ABC):
 class ConsoleTransmissionChannel(ITransmissionChannel):
     """Implementador concreto para consola/log oficial."""
     def send_payload(self, destination: str, payload: Dict[str, Any]) -> bool:
-        timestamp = payload.get("timestamp", datetime.utcnow.isoformat)
+        timestamp = payload.get("timestamp", datetime.now(timezone.utc).isoformat())
         print(f"\n[CANAL CONSOLA :: {destination}] ({timestamp}) Tipo: {payload.get('type')}")
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return True
@@ -319,7 +372,7 @@ class FileTransmissionChannel(ITransmissionChannel):
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
     def send_payload(self, destination: str, payload: Dict[str, Any]) -> bool:
-        safe_name = destination.replace("/", "_").replace(" ", "_").lower
+        safe_name = destination.replace("/", "_").replace(" ", "_").lower()
         file_path = self._output_dir / f"transmission_{safe_name}.jsonl"
         with open(file_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(payload, ensure_ascii=False) + "\n")
@@ -367,7 +420,7 @@ class PreliminaryBulletin(ElectoralBulletin):
     def __init__(self, channel: ITransmissionChannel, bulletin_number: int,
                  election_title: str, processed_tables: List[str],
                  candidate_votes: Dict[str, int]) -> None:
-        super.__init__(channel)
+        super().__init__(channel)
         self.bulletin_number = bulletin_number
         self.election_title = election_title
         self.processed_tables = list(processed_tables)
@@ -378,11 +431,11 @@ class PreliminaryBulletin(ElectoralBulletin):
             "type": "PRELIMINARY_BULLETIN",
             "bulletin_number": self.bulletin_number,
             "election_title": self.election_title,
-            "timestamp": datetime.utcnow.isoformat,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "tables_processed_count": len(self.processed_tables),
             "tables": self.processed_tables,
             "candidate_votes": self.candidate_votes,
-            "total_votes_tallied": sum(self.candidate_votes.values),
+            "total_votes_tallied": sum(self.candidate_votes.values()),
         }
         return self._channel.send_payload(destination=destination, payload=payload)
 
@@ -390,9 +443,9 @@ class AuditAlertBulletin(ElectoralBulletin):
     """Abstracción refinada: Alerta prioritaria de seguridad o auditoría."""
     def __init__(self, channel: ITransmissionChannel, alert_code: str,
                  severity: str, description: str, affected_station_id: str) -> None:
-        super.__init__(channel)
+        super().__init__(channel)
         self.alert_code = alert_code
-        self.severity = severity.upper
+        self.severity = severity.upper()
         self.description = description
         self.affected_station_id = affected_station_id
 
@@ -403,7 +456,28 @@ class AuditAlertBulletin(ElectoralBulletin):
             "severity": self.severity,
             "station_id": self.affected_station_id,
             "description": self.description,
-            "timestamp": datetime.utcnow.isoformat,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        return self._channel.send_payload(destination=destination, payload=payload)
+
+class OfficialClosingBulletin(ElectoralBulletin):
+    """Boletín formal de cierre: acta consolidada con sello SHA-256."""
+    def __init__(self, channel, election_title: str, jurisdiction: str,
+                 total_votes: int, integrity_hash: str) -> None:
+        super().__init__(channel)
+        self.election_title = election_title
+        self.jurisdiction = jurisdiction
+        self.total_votes = total_votes
+        self.integrity_hash = integrity_hash
+
+    def dispatch(self, destination: str) -> bool:
+        payload = {
+            "type": "OFFICIAL_CLOSING_BULLETIN",
+            "election_title": self.election_title,
+            "jurisdiction": self.jurisdiction,
+            "total_votes": self.total_votes,
+            "integrity_hash": self.integrity_hash,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         return self._channel.send_payload(destination=destination, payload=payload)
 ```
@@ -428,7 +502,7 @@ ambos patrones emplean envoltura y composición pero responden a intenciones rad
   - Los adaptadores solo traducen formatos de datos al modelo canónico; no validan urnas ni cuentan votos.
   - La abstracción `ElectoralBulletin` solo modela la semántica del mensaje; el canal `ITransmissionChannel` se ocupa exclusivamente del protocolo de transporte.
 * **Open/Closed Principle (OCP):**
-  - Si mañana el gobierno suministra el censo mediante una base de datos SQLite o servicio SOAP, solo se programa un `SqliteCensusAdapter` sin alterar una sola línea del motor electoral.
+  - El proyecto ya incluye `SqliteCensusAdapter` para la fuente activa; si mañana aparece otra fuente (SOAP, REST, etc.), se agrega un adaptador nuevo sin alterar el motor electoral.
   - Si se añade un canal de difusión por Webhook o satélite, solo se implementa `RestWebhookTransmissionChannel` sin tocar los boletines existentes.
 * **Dependency Inversion Principle (DIP):**
   - Los casos de uso electorales solo dependen de `ICensusRegistry` y de `ElectoralBulletin`, operando contra abstracciones puras.

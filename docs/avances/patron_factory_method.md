@@ -88,7 +88,7 @@ La implementación separa rigurosamente la jerarquía del **Producto** (`Ballot`
 ```python
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 @dataclass(frozen=True)
 class Ballot(ABC):
@@ -118,7 +118,7 @@ class ReferendumBallot(Ballot):
     decision: str
 
     def get_selection(self) -> str:
-        return f"[{self.question_code}] {self.decision.upper}"
+        return f"[{self.question_code}] {self.decision.upper()}"
 
 @dataclass(frozen=True)
 class BlankBallot(Ballot):
@@ -126,7 +126,7 @@ class BlankBallot(Ballot):
     category: str
 
     def get_selection(self) -> str:
-        return f"VOTO EN BLANCO - {self.category.upper}"
+        return f"VOTO EN BLANCO - {self.category.upper()}"
 ```
 
 ### 4.2 Jerarquía del Creador (`BallotCreator` y subclases)
@@ -150,8 +150,8 @@ class BallotCreator(ABC):
 class CandidateBallotCreator(BallotCreator):
     def create_ballot(self, **kwargs) -> CandidateBallot:
         return CandidateBallot(
-            ballot_id=str(uuid.uuid4),
-            issued_at=datetime.utcnow,
+            ballot_id=str(uuid.uuid4()),
+            issued_at=datetime.now(timezone.utc),
             candidate_id=kwargs["candidate_id"],
             candidate_name=kwargs["candidate_name"],
             party_name=kwargs.get("party_name", "Independiente"),
@@ -160,8 +160,8 @@ class CandidateBallotCreator(BallotCreator):
 class ReferendumBallotCreator(BallotCreator):
     def create_ballot(self, **kwargs) -> ReferendumBallot:
         return ReferendumBallot(
-            ballot_id=str(uuid.uuid4),
-            issued_at=datetime.utcnow,
+            ballot_id=str(uuid.uuid4()),
+            issued_at=datetime.now(timezone.utc),
             question_code=kwargs["question_code"],
             decision=kwargs["decision"],
         )
@@ -169,8 +169,8 @@ class ReferendumBallotCreator(BallotCreator):
 class BlankBallotCreator(BallotCreator):
     def create_ballot(self, **kwargs) -> BlankBallot:
         return BlankBallot(
-            ballot_id=str(uuid.uuid4),
-            issued_at=datetime.utcnow,
+            ballot_id=str(uuid.uuid4()),
+            issued_at=datetime.now(timezone.utc),
             category=kwargs.get("category", "General"),
         )
 ```

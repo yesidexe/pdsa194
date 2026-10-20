@@ -121,14 +121,14 @@ class CredentialValidator(ABC):
 
 class NationalCitizenValidator(CredentialValidator):
     def validate_credential(self, document_id: str) -> bool:
-        return document_id.isdigit and 6 <= len(document_id) <= 10
+        return document_id.isdigit() and 6 <= len(document_id) <= 10
 
     def get_document_type(self) -> str:
         return "Cédula de Ciudadanía (C.C.)"
 
 class StudentCodeValidator(CredentialValidator):
     def validate_credential(self, document_id: str) -> bool:
-        return len(document_id) >= 5 and any(c.isdigit for c in document_id)
+        return len(document_id) >= 5 and any(c.isdigit() for c in document_id)
 
     def get_document_type(self) -> str:
         return "Código de Carnet Estudiantil"
@@ -155,10 +155,10 @@ class TallyRule(ABC):
 
 class AbsoluteMajorityTallyRule(TallyRule):
     def evaluate_winner(self, votes_summary: Dict[str, int]) -> str:
-        total = sum(votes_summary.values)
+        total = sum(votes_summary.values())
         if total == 0:
             return "Sin votos registrados"
-        for option, count in votes_summary.items:
+        for option, count in votes_summary.items():
             if count > total / 2:
                 return f"Ganador directo por Mayoría Absoluta (>50%): {option}"
         return "No hay mayoría absoluta: Requiere Segunda Vuelta (Balotaje)"
@@ -192,24 +192,24 @@ class ElectoralFamilyFactory(ABC):
 class NationalElectionFactory(ElectoralFamilyFactory):
     """Produce exclusivamente la familia nacional de componentes."""
     def create_validator(self) -> CredentialValidator:
-        return NationalCitizenValidator
+        return NationalCitizenValidator()
 
     def create_header(self) -> BallotHeader:
-        return NationalBallotHeader
+        return NationalBallotHeader()
 
     def create_tally_rule(self) -> TallyRule:
-        return AbsoluteMajorityTallyRule
+        return AbsoluteMajorityTallyRule()
 
 class UniversityElectionFactory(ElectoralFamilyFactory):
     """Produce exclusivamente la familia universitaria de componentes."""
     def create_validator(self) -> CredentialValidator:
-        return StudentCodeValidator
+        return StudentCodeValidator()
 
     def create_header(self) -> BallotHeader:
-        return UniversityBallotHeader
+        return UniversityBallotHeader()
 
     def create_tally_rule(self) -> TallyRule:
-        return SimplePluralityTallyRule
+        return SimplePluralityTallyRule()
 ```
 
 ---

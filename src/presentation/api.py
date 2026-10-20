@@ -254,7 +254,11 @@ def create_api_app(target: Union[ElectoralAccessProxy, ElectoralSystemHolder]) -
     def close_election(session: UserSession = Depends(require_admin_session)) -> Dict[str, Any]:
         try:
             holder.proxy.close_polls(session)
-            return {"status": "JORNADA_CERRADA", "is_open": holder.proxy.is_voting_open}
+            return {
+                "status": "JORNADA_CERRADA",
+                "is_open": holder.proxy.is_voting_open,
+                "is_tallied": holder.proxy.is_tallied,
+            }
         except PermissionError as exc:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
 
@@ -355,7 +359,6 @@ def create_api_app(target: Union[ElectoralAccessProxy, ElectoralSystemHolder]) -
             "full_name": voter.full_name,
             "assigned_station_id": voter.assigned_station_id,
             "is_eligible": voter.is_eligible,
-            "pin": req.pin,
         }
 
     @api.put("/api/census/voters/{document_id}/status", tags=["Censo Electoral"])
