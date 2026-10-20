@@ -84,7 +84,7 @@ En palabras simples:
 
 ## 4. Documentación
 
-> La documentación completa está en el archivo [doc_completa](docs/doc_completa.docx).
+> La documentación completa en formato pdf está en el archivo [doc_completa.pdf](docs/doc_completa.pdf) y en formato docx está en el archivo [doc_completa.docx](docs/doc_completa.docx).
 
 La plataforma se organizó con **12 patrones de diseño** agrupados en ocho documentos. Cada documento explica el problema, la solución, su diagrama y la relación con el código. El detalle técnico vive allí, no en este README.
 
