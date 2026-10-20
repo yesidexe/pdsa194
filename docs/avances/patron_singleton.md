@@ -34,7 +34,7 @@ classDiagram
         +str institution_name
         +str election_title
         +int max_votes_per_citizen
-        -_bool _is_open
+        -bool _is_open
         +__new__(*args, **kwargs)$ ElectoralConfigManager
         +__init__(institution_name, election_title, max_votes_per_citizen) void
         +is_open bool

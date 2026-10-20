@@ -263,6 +263,16 @@ def test_tally_builder_and_proxy_audit(admin_client):
     reopen = admin_client.post("/api/election/open")
     assert reopen.status_code == 409
 
+    # Tampoco se puede generar una segunda acta sin reiniciar la jornada.
+    repeat = admin_client.post(
+        "/api/tally/generate",
+        json={"officer_signatures": ["FIRMA-PRESIDENTE-TEST", "FIRMA-VOCAL-TEST"]},
+    )
+    assert repeat.status_code == 409
+
+    from src.core.database import get_election_tallied
+    assert get_election_tallied("NATIONAL") is True
+
 
 def test_abstract_factory_mode_switching(admin_client):
     """La conmutación cambia validación, encabezado y regla de escrutinio."""
@@ -335,6 +345,7 @@ def test_sqlite_census_adapter_direct():
 
 def test_census_api_endpoints(admin_client):
     """Inscripción, consulta y cambio de habilitación desde el panel."""
+    admin_client.post("/api/admin/reset-election")
     listing = admin_client.get("/api/census/voters")
     assert listing.status_code == 200
     assert len(listing.json()) > 0
@@ -383,6 +394,7 @@ def test_census_api_endpoints(admin_client):
 
 def test_dashboard_realtime_metrics(admin_client):
     """El dashboard refleja votos por ID y cuenta solo electores habilitados."""
+    admin_client.post("/api/admin/reset-election")
     public = TestClient(app)
     for document_id in ("20000006", "20000007"):
         verify = public.post("/api/auth/verify", json={"document_id": document_id, "pin": "1234"})

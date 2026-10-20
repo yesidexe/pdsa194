@@ -181,7 +181,11 @@ def bootstrap_electoral_system(mode: str = "national") -> ElectoralAccessProxy:
             role=UserRole.ADMINISTRADOR,
             session_token="SESSION-BOOTSTRAP",
         )
-        proxy.open_polls(admin_session)
+        try:
+            proxy.open_polls(admin_session)
+        except ValueError:
+            # Una jornada ya escrutada se reconstruye cerrada hasta que se reinicie.
+            pass
 
     return proxy
 

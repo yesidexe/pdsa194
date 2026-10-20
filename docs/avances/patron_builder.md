@@ -197,7 +197,7 @@ class OfficialTallyReportBuilder(TallyReportBuilder):
         total = sum(self._candidate_votes.values()) + self._blank_votes + self._null_votes
         now = datetime.now(timezone.utc)
 
-        # Sellado criptográfico automático del estado final
+        # Sello de integridad SHA-256 del estado final
         payload = {
             "title": self._election_title,
             "jurisdiction": self._jurisdiction,
@@ -258,5 +258,5 @@ class TallyReportDirector:
 El método `build` calcula de forma determinista un resumen SHA-256 de todas las partes ensambladas. El acta nace con un sello de integridad verificable; no es una firma digital asimétrica.
 
 ### 5.3 Relación con Principios SOLID
-* **Single Responsibility Principle (SRP):** El reporte sólo modela los datos consolidados; el constructor se encarga exclusivamente de las reglas de ensamble, validación de rangos y firmado.
+* **Single Responsibility Principle (SRP):** El reporte sólo modela los datos consolidados; el constructor se encarga exclusivamente de las reglas de ensamble, validación de rangos y cálculo del sello de integridad.
 * **Open/Closed Principle (OCP):** Es posible introducir nuevos formatos de acta (por ejemplo, `AuditedJsonTallyReportBuilder` o `InternationalTallyReportBuilder`) implementando `TallyReportBuilder` sin alterar el código cliente existente.

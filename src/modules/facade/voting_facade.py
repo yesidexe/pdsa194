@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from src.core.config import ElectoralConfigManager
+from src.core.database import get_election_tallied, set_election_tallied
 from src.modules.census.census_adapter import ICensusRegistry
 from src.modules.election.election_factory import (
     ElectoralFamilyFactory,
@@ -44,6 +45,10 @@ from src.modules.transmission.bulletin_bridge import (
 )
 
 
+class TallyAlreadyGeneratedError(Exception):
+    """La jornada ya tiene un acta y no puede escrutarse dos veces sin reiniciar."""
+
+
 class VotingSystemFacade:
     """Punto de entrada único para las operaciones de la jornada electoral."""
 
@@ -68,7 +73,6 @@ class VotingSystemFacade:
         self._family_factory: Optional[ElectoralFamilyFactory] = None
         self._transmission_channel: Optional[ITransmissionChannel] = None
         self._jurisdiction_tree: Optional[ElectoralUnit] = None
-        self._tally_generated: bool = False
 
     # =========================================================================
     # A. CONFIGURACIÓN DEL ECOSISTEMA
@@ -116,7 +120,7 @@ class VotingSystemFacade:
     @property
     def is_tallied(self) -> bool:
         """Indica si ya se generó el acta de esta jornada."""
-        return self._tally_generated
+        return get_election_tallied(self.election_type)
 
     @property
     def institution_name(self) -> str:
@@ -139,7 +143,7 @@ class VotingSystemFacade:
         return self._family_factory.create_validator().get_document_type()
 
     def open_polls(self) -> None:
-        if self._tally_generated:
+        if self.is_tallied:
             raise ValueError(
                 "La jornada ya fue escrutada. Reinicia la jornada para volver a abrir la urna."
             )
@@ -151,7 +155,7 @@ class VotingSystemFacade:
     def reset_election(self) -> int:
         """Borra votos y participaciones de esta elección y reabre la urna."""
         removed = reset_election_store(self.election_type)
-        self._tally_generated = False
+        set_election_tallied(self.election_type, False)
         self.open_polls()
         return removed
 
@@ -363,6 +367,11 @@ class VotingSystemFacade:
         dispatch_destination: Optional[str] = None,
     ) -> ElectoralTallyReport:
         """Cierra la urna, cuenta por identificador y construye el acta."""
+        if self.is_tallied:
+            raise TallyAlreadyGeneratedError(
+                "La jornada ya fue escrutada. Reinicia la jornada para generar una nueva acta."
+            )
+
         self.close_polls()
 
         candidate_votes: Dict[str, int] = {}
@@ -421,7 +430,7 @@ class VotingSystemFacade:
             )
             closing_bulletin.dispatch(destination=dispatch_destination)
 
-        self._tally_generated = True
+        set_election_tallied(self.election_type, True)
         return report
 
     # =========================================================================

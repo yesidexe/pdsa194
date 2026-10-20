@@ -106,6 +106,25 @@ class BallotRecordModel(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
+class ElectionStateModel(Base):
+    """Estado persistente de la jornada, independiente de la urna y del censo."""
+
+    __tablename__ = "election_state"
+    __table_args__ = (
+        UniqueConstraint("election_type", name="uq_election_state_type"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    election_type = Column(String(20), nullable=False, index=True)
+    is_tallied = Column(Boolean, default=False, nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
 def _seed_rows() -> List[CitizenModel]:
     """Genera un censo sintético y reproducible para la demo local.
 
@@ -188,6 +207,45 @@ def _seed_rows() -> List[CitizenModel]:
             )
         )
     return rows
+
+
+def get_election_tallied(election_type: str) -> bool:
+    """Indica si la elección ya tiene un acta generada."""
+    target = str(election_type).upper().strip()
+    session = SessionLocal()
+    try:
+        row = (
+            session.query(ElectionStateModel)
+            .filter(ElectionStateModel.election_type == target)
+            .first()
+        )
+        return bool(row and row.is_tallied)
+    finally:
+        session.close()
+
+
+def set_election_tallied(election_type: str, is_tallied: bool) -> None:
+    """Guarda o actualiza el estado de escrutinio de una elección."""
+    target = str(election_type).upper().strip()
+    session = SessionLocal()
+    try:
+        row = (
+            session.query(ElectionStateModel)
+            .filter(ElectionStateModel.election_type == target)
+            .first()
+        )
+        if row is None:
+            session.add(
+                ElectionStateModel(
+                    election_type=target,
+                    is_tallied=bool(is_tallied),
+                )
+            )
+        else:
+            row.is_tallied = bool(is_tallied)
+        session.commit()
+    finally:
+        session.close()
 
 
 def init_db() -> None:

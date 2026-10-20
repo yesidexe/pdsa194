@@ -33,7 +33,7 @@ Una papeleta emitida (`Ballot`) almacena la opción elegida por el votante. No o
 3. Código de recibo y marca de agua para verificación del ciudadano.
 
 **El Antipatrón Evitado (Explosión de Subclases):**
-Si intentáramos modelar estas combinaciones mediante herencia de clases, tendríamos una explosión de $2^n$ clases (`BallotConTimestamp`, `BallotConTimestampYFirma`, `BallotConTimestampFirmaYMarca`, etc.).
+Si intentáramos modelar estas combinaciones mediante herencia de clases, tendríamos una explosión de 2ⁿ clases (`BallotConTimestamp`, `BallotConTimestampYFirma`, `BallotConTimestampFirmaYMarca`, etc.).
 **Solución Decorator:** Envuelve dinámicamente el voto en memoria en tiempo de ejecución. Permite anidar tantas capas de seguridad como la elección demande (`DigitalSignatureDecorator(TimestampSecurityDecorator(ballot))`) sin alterar la entidad base `Ballot` y garantizando que el objeto siga cumpliendo la interfaz de sufragio.
 
 ### 2.3 Justificación de FACADE: La Puerta de Entrada hacia la Interfaz Gráfica
@@ -161,6 +161,7 @@ classDiagram
         +str ballot_id
         +datetime issued_at
         +get_selection* str
+        +base_ballot Ballot
     }
 
     %% Decorador Abstracto Base
@@ -168,6 +169,7 @@ classDiagram
         <<abstract>>
         #Ballot _wrapped_ballot
         +wrapped_ballot Ballot
+        +base_ballot Ballot
         +get_selection str
         +get_security_metadata* Dict
         +get_audit_trail List~str~
@@ -261,19 +263,17 @@ classDiagram
         -ElectoralFamilyFactory _family_factory
         -ITransmissionChannel _transmission_channel
         -ElectoralUnit _jurisdiction_tree
-        -List~Ballot~ _ballot_box
-        -Set~str~ _voted_citizens
         +setup_environment(census, family_factory, transmission_channel, jurisdiction_tree) void
         +register_station_template(template_key, station) void
         +spawn_station(template_key, station_id, terminal_code, officers) VotingStation
         +open_polls void
         +close_polls void
         +verify_voter(document_id, pin, check_existing=True) Dict
-        +cast_secure_vote(document_id, pin, ballot_type, kwargs, security_layers) Dict
+        +cast_secure_vote(document_id, pin, ballot_type, selection_kwargs, security_layers, signing_key) Dict
         +reset_election int
         +is_tallied bool
-        +emit_preliminary_bulletin(bulletin_number, destination) bool
-        +close_and_generate_tally(signatures, destination) ElectoralTallyReport
+        +emit_preliminary_bulletin(bulletin_number, destination) Optional~bool~
+        +close_and_generate_tally(officer_signatures, dispatch_destination) ElectoralTallyReport
         +get_dashboard_summary Dict
     }
 
@@ -283,7 +283,7 @@ classDiagram
     VotingSystemFacade ..> ElectoralFamilyFactory : 4. Valida leyes y reglas (Abstract Factory)
     VotingSystemFacade ..> StationPrototypeRegistry : 5. Clona mesas (Prototype)
     VotingSystemFacade ..> ElectoralUnit : 6. Consulta territorio (Composite)
-    VotingSystemFacade ..> BallotSecurityDecorator : 7. Añade sellos y firmas (Decorator)
+    VotingSystemFacade ..> BallotSecurityDecorator : 7. Añade sellos de integridad (Decorator)
     VotingSystemFacade ..> OfficialTallyReportBuilder : 8. Ensambla acta SHA-256 (Builder)
     VotingSystemFacade ..> ITransmissionChannel : 9. Transmite boletines (Bridge)
 ```
@@ -308,7 +308,6 @@ class VotingSystemFacade:
         self._family_factory: Optional[ElectoralFamilyFactory] = None
         self._transmission_channel: Optional[ITransmissionChannel] = None
         self._jurisdiction_tree: Optional[ElectoralUnit] = None
-        self._tally_generated: bool = False
 
     def verify_voter(self, document_id: str, pin: str, check_existing: bool = True) -> Dict[str, Any]:
         # Valida urna abierta, formato, PIN contra el censo y voto único
@@ -316,16 +315,22 @@ class VotingSystemFacade:
 
     def cast_secure_vote(self, document_id: str, pin: str, ballot_type: str,
                          selection_kwargs: Dict[str, Any],
-                         security_layers: Optional[List[str]] = None) -> Dict[str, Any]:
+                         security_layers: Optional[List[str]] = None,
+                         signing_key: str = "MASTER_FACADE_SECRET_2026") -> Dict[str, Any]:
         # Valida elegibilidad, fabrica papeleta, aplica decoradores y persiste
         # la participación y la papeleta anónima en SQLite
         ...
 
     def close_and_generate_tally(self, officer_signatures: List[str],
                                  dispatch_destination: Optional[str] = None) -> ElectoralTallyReport:
-        # Cierra urnas, totaliza votos, construye acta consolidada con Builder y transmite por Bridge
+        # Cierra la urna, totaliza votos, construye el acta con Builder,
+        # la transmite por Bridge y bloquea una segunda acta sin reset.
         ...
 ```
+
+El acta solo se puede generar una vez por jornada. El estado de escrutinio se persiste en
+la tabla `election_state`; si se intenta de nuevo sin reiniciar, la fachada rechaza la
+operación y la API responde `409 Conflict` incluso después de reiniciar el servidor.
 
 ---
 
@@ -333,7 +338,7 @@ class VotingSystemFacade:
 
 ### 6.1 Relación entre los patrones
 El sistema articula los patrones estructurales para resolver los problemas de integración y coordinación:
-1. **Adapter:** Resolvió la incompatibilidad del censo de electores (JSON vs CSV).
+1. **Adapter:** Resolvió la incompatibilidad del censo de electores (SQLite, JSON y CSV).
 2. **Bridge:** Desacopló los boletines oficiales de los canales físicos de transporte (Consola, Archivo, Sink).
 3. **Composite:** Jerarquizó el mapa electoral unificando el tratamiento de mesas individuales y recintos completos.
 4. **Decorator:** Dotó a las papeletas de capas dinámicas de seguridad acumulativas (HMAC, marcas y tiempo).

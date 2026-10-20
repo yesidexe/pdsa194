@@ -38,9 +38,9 @@ Durante el transcurso de las elecciones y al cierre de urnas, se requiere difund
 #### El Antipatrón de Herencia Evitado (Explosión Combinatoria):
 Si resolviéramos esta necesidad mediante herencia tradicional, tendríamos que crear clases para cada combinación posible:
 `PreliminaryBulletinConsole`, `PreliminaryBulletinFile`, `AuditAlertConsole`, `AuditAlertFile`, `ClosingBulletinConsole`, etc.
-Con 3 tipos de boletines y 3 canales de salida, se requerirían **$3 \times 3 = 9$ clases**. Si el día de mañana se agrega un nuevo canal (ej. Webhook REST o Transmisión Satelital), se sumarían 3 clases más por cada nuevo medio.
+Con 3 tipos de boletines y 3 canales de salida, se requerirían **3 × 3 = 9 clases**. Si el día de mañana se agrega un nuevo canal (ej. Webhook REST o Transmisión Satelital), se sumarían 3 clases más por cada nuevo medio.
 
-El patrón **Bridge** resuelve este dilema desacoplando la jerarquía de abstracción (los boletines) de la jerarquía de implementación (los canales de transporte), combinándolos por **composición**. Esto reduce el número total de clases a **$3 + 3 = 6$**, permitiendo que cualquiera de las dos jerarquías crezca de forma autónoma sin impactar a la otra.
+El patrón **Bridge** resuelve este dilema desacoplando la jerarquía de abstracción (los boletines) de la jerarquía de implementación (los canales de transporte), combinándolos por **composición**. Esto reduce el número total de clases a **3 + 3 = 6**, permitiendo que cualquiera de las dos jerarquías crezca de forma autónoma sin impactar a la otra.
 
 ---
 
@@ -48,7 +48,7 @@ El patrón **Bridge** resuelve este dilema desacoplando la jerarquía de abstrac
 
 ### 3.1 Modelo Estructural y Diagrama de Clases (UML)
 
-El siguiente diagrama modela la interfaz objetivo `ICensusRegistry` (Target), el registro canónico de elector `VoterCensusRecord`, y los dos adaptadores de objeto concretos (`JsonCensusAdapter` y `CsvCensusAdapter`):
+El siguiente diagrama modela la interfaz objetivo `ICensusRegistry` (Target), el registro canónico de elector `VoterCensusRecord`, y los tres adaptadores de objeto concretos (`JsonCensusAdapter`, `CsvCensusAdapter` y `SqliteCensusAdapter`):
 
 ```mermaid
 classDiagram
@@ -80,6 +80,8 @@ classDiagram
         +is_eligible(document_id: str) bool
         +get_voter_record(document_id: str) Optional~VoterCensusRecord~
         +get_total_registered int
+        +get_total_eligible int
+        +authenticate(document_id: str, pin: str) Optional~VoterCensusRecord~
     }
 
     class CsvCensusAdapter {
@@ -88,10 +90,22 @@ classDiagram
         +is_eligible(document_id: str) bool
         +get_voter_record(document_id: str) Optional~VoterCensusRecord~
         +get_total_registered int
+        +get_total_eligible int
+        +authenticate(document_id: str, pin: str) Optional~VoterCensusRecord~
+    }
+
+    class SqliteCensusAdapter {
+        -str election_type
+        +is_eligible(document_id: str) bool
+        +get_voter_record(document_id: str) Optional~VoterCensusRecord~
+        +get_total_registered int
+        +get_total_eligible int
+        +authenticate(document_id: str, pin: str) Optional~VoterCensusRecord~
     }
 
     ICensusRegistry <|.. JsonCensusAdapter : implementa (Target)
     ICensusRegistry <|.. CsvCensusAdapter : implementa (Target)
+    ICensusRegistry <|.. SqliteCensusAdapter : implementa (Target)
     ICensusRegistry ..> VoterCensusRecord : produce
 ```
 
@@ -153,7 +167,11 @@ class JsonCensusAdapter(ICensusRegistry):
             doc = str(item.get("documento_id", item.get("codigo", item.get("id", "")))).strip()
             name = item.get("nombre_completo", item.get("nombres", item.get("name", "Desconocido"))).strip()
             station = item.get("mesa_asignada", item.get("mesa", item.get("station", "MESA-GENERAL"))).strip()
-            eligible = bool(item.get("habilitado", item.get("activo", item.get("eligible", True))))
+            raw_eligible = item.get("habilitado", item.get("activo", item.get("eligible", True)))
+            if isinstance(raw_eligible, str):
+                eligible = raw_eligible.strip().lower() in {"true", "1", "si", "sí", "habilitado", "activo"}
+            else:
+                eligible = bool(raw_eligible)
 
             if doc:
                 self._records_by_id[doc] = VoterCensusRecord(
@@ -173,6 +191,13 @@ class JsonCensusAdapter(ICensusRegistry):
 
     def get_total_registered(self) -> int:
         return len(self._records_by_id)
+
+    def get_total_eligible(self) -> int:
+        return sum(1 for record in self._records_by_id.values() if record.is_eligible)
+
+    def authenticate(self, document_id: str, pin: str) -> Optional[VoterCensusRecord]:
+        # JSON/CSV no traen PIN verificable: se falla cerrado.
+        return None
 ```
 
 #### Adaptador para Esquemas Tabulares CSV (`CsvCensusAdapter`):
@@ -492,8 +517,8 @@ ambos patrones emplean envoltura y composición pero responden a intenciones rad
 | Criterio | Patrón ADAPTER | Patrón BRIDGE |
 | :--- | :--- | :--- |
 | **Intención GoF** | *Convertir la interfaz de una clase en otra interfaz que el cliente espera.* | *Desacoplar una abstracción de su implementación para que varíen independientemente.* |
-| **Problema que Resuelve** | Compatibilidad a posteriori: clases ya existentes cuyas interfaces no encajan. | Diseño preventivo: evitar la explosión combinatoria multidimensional ($M \times N$). |
-| **Momento de Aplicación** | Se aplica sobre sistemas existentes o formatos externos (Censo CSV/JSON). | Se planifica desde el inicio de la arquitectura (Despacho multicanal de boletines). |
+| **Problema que Resuelve** | Compatibilidad a posteriori: clases ya existentes cuyas interfaces no encajan. | Diseño preventivo: evitar la explosión combinatoria multidimensional (M × N). |
+| **Momento de Aplicación** | Se aplica sobre sistemas existentes o formatos externos o bases de datos (Censo CSV/JSON/SQLite). | Se planifica desde el inicio de la arquitectura (Despacho multicanal de boletines). |
 | **Relación de Interfaces** | Adapta una interfaz incompatible a la interfaz esperada por el Target. | Conecta dos jerarquías paralelas diseñadas para colaborar desde el inicio. |
 | **Rol en el Sistema** | **Inbound (Entrada):** Ingesta y saneamiento de electores. | **Outbound (Salida):** Transmisión y reporte de eventos oficiales. |
 

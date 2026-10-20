@@ -18,7 +18,7 @@ El sistema aborda dos retos concretos de la plataforma: **la seguridad de privil
 ### 2.1 Justificación de PROXY: Control de Privilegios y Auditoría de Operaciones
 En un sistema electoral, no todos los usuarios pueden ejecutar cualquier operación:
 * Solo los **ADMINISTRADORES** pueden abrir formalmente la jornada electoral o reconfigurar los parámetros de las mesas.
-* Solo los **JURADOS DE MESA** o electores autenticados pueden registrar votos en la cabina.
+* Los electores se autentican con documento + PIN y emiten el voto. El Proxy reserva la validación de roles para las operaciones administrativas.
 * Solo los **JURADOS y ADMINISTRADORES** debidamente identificados pueden cerrar urnas y firmar el Acta de Escrutinio.
 * El rol **AUDITOR** está definido para fiscalizar resultados y estado de urnas; en la demo la consulta pública del dashboard no exige sesión.
 
@@ -41,7 +41,7 @@ Cada sufragio emitido por un candidato contiene información descriptiva que no 
 Si cada papeleta instanciara sus propias copias de estos textos, se repetiría información innecesariamente. En esta demo el beneficio es de claridad y consistencia; la escala real sería mayor en una elección masiva.
 
 **Solución Flyweight (Separación de Estados):**
-* **Estado Intrínseco (Compartido e Inmutable):** Modelado en `CandidateMetadataFlyweight`. Contiene los datos fijos del candidato (`candidate_id`, `candidate_name`, `party_name`, `slogan`, `color`). Este objeto existe **una única vez en memoria por candidato** y se comparte en el catálogo y en la validación server-side. La papeleta persistida guarda el `candidate_id`, no una copia completa de la ficha.
+* **Estado Intrínseco (Compartido e Inmutable):** Modelado en `CandidateMetadataFlyweight`. Contiene los datos fijos del candidato (`candidate_id`, `candidate_name`, `party_name`, `campaign_slogan`, `party_color_hex`, `photo_url`). Este objeto existe **una única vez en memoria por candidato** y se comparte en el catálogo y en la validación server-side. La papeleta persistida guarda el `candidate_id` y una etiqueta de selección (`selection`), pero no una copia completa de la ficha.
 * **Estado Extrínseco (Único por voto):** Modelado en la papeleta individual (`ballot_id`, `issued_at`, `receipt_code`).
 * **Criterio contra la sobreingeniería ("Patternitis"):** En lugar de crear jerarquías pesadas innecesarias, se implementó `CandidateFlyweightFactory` de forma compacta y legible (~35 líneas), proporcionando además el catálogo oficial para renderizar el tarjetón visual en la interfaz web.
 
@@ -75,8 +75,8 @@ classDiagram
         +open_polls void
         +close_polls void
         +verify_voter(document_id, pin, check_existing=True) Dict
-        +cast_secure_vote(document_id, pin, ballot_type, selection_kwargs, security_layers) Dict
-        +reset_election void
+        +cast_secure_vote(document_id, pin, ballot_type, selection_kwargs, security_layers, signing_key) Dict
+        +reset_election int
         +is_tallied bool
         +close_and_generate_tally(...) ElectoralTallyReport
         +get_dashboard_summary Dict
@@ -93,7 +93,7 @@ classDiagram
         +verify_voter(document_id, pin, session=None) Dict
         +cast_secure_vote(document_id, pin, ballot_type, selection_kwargs, session=None, ...) Dict
         +reset_election(session) int
-        +close_and_generate_tally(session, signatures, destination) ElectoralTallyReport
+        +close_and_generate_tally(session, officer_signatures, dispatch_destination) ElectoralTallyReport
         +get_dashboard_summary Dict
     }
 
@@ -132,6 +132,10 @@ class ElectoralAccessProxy:
             self._record_audit_event("GENERATE_TALLY", session.user_id, session.role.value, "RECHAZADO")
             raise PermissionError("Acceso denegado: Solo jurados o administradores pueden consolidar el acta final.")
 
+        if not officer_signatures:
+            self._record_audit_event("GENERATE_TALLY", session.user_id, session.role.value, "RECHAZADO")
+            raise ValueError("No se puede generar el acta sin las firmas de los jurados.")
+
         report = self._facade.close_and_generate_tally(
             officer_signatures=officer_signatures,
             dispatch_destination=dispatch_destination,
@@ -164,7 +168,7 @@ classDiagram
     %% Fábrica y Almacén Común (Pool)
     class CandidateFlyweightFactory {
         -Dict _flyweights$
-        +get_candidate(candidate_id, name, party, slogan, color)$ CandidateMetadataFlyweight
+        +get_candidate(candidate_id, candidate_name, party_name, campaign_slogan, party_color_hex, photo_url)$ CandidateMetadataFlyweight
         +get_all_candidates$ List~CandidateMetadataFlyweight~
         +total_shared_instances$ int
         +reset_pool$ void
@@ -212,11 +216,13 @@ class CandidateFlyweightFactory:
 * **Liskov Substitution Principle (LSP):** El cliente interactúa con el Proxy utilizando las mismas operaciones esperadas del sistema electoral.
 
 ### 5.2 Balance arquitectónico
+La bitácora del Proxy vive en memoria y se pierde al reiniciar o cambiar de modalidad; no es persistente ni inmutable. Es una limitación conocida de la demo, no una propiedad del patrón.
+
 Con la incorporación de **Proxy** y **Flyweight**, el catálogo de patrones estructurales queda implementado con una justificación de dominio sólida:
 
 | # | Patrón Estructural | Módulo | Problema que Resuelve en el Dominio |
 |---|---|---|---|
-| 1 | **Adapter** | `src/modules/census/` | Homogeneiza censos externos heterogéneos (JSON vs CSV). |
+| 1 | **Adapter** | `src/modules/census/` | Homogeneiza censos externos heterogéneos (CSV, JSON y SQLite). |
 | 2 | **Bridge** | `src/modules/transmission/` | Desacopla boletines de salida de los canales físicos de transporte. |
 | 3 | **Composite** | `src/modules/election/` | Jerarquiza el mapa electoral y mesas en estructura parte-todo. |
 | 4 | **Decorator** | `src/modules/voting/` | Añade capas dinámicas de seguridad al voto sin explosión de clases. |

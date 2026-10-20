@@ -45,7 +45,7 @@ class BallotSecurityDecorator(Ballot, ABC):
 
 
 class TimestampSecurityDecorator(BallotSecurityDecorator):
-    """Decorador concreto que estampa una marca de tiempo UTC certificada e inmutable."""
+    """Decorador concreto que agrega un sello de tiempo UTC a la papeleta."""
 
     def __init__(
         self,
@@ -68,7 +68,7 @@ class TimestampSecurityDecorator(BallotSecurityDecorator):
 
 
 class DigitalSignatureDecorator(BallotSecurityDecorator):
-    """Decorador concreto que sella criptográficamente la papeleta mediante HMAC-SHA256."""
+    """Decorador concreto que agrega un sello HMAC-SHA256 a la papeleta."""
 
     def __init__(
         self,
@@ -106,7 +106,7 @@ class DigitalSignatureDecorator(BallotSecurityDecorator):
 
 
 class AuditWatermarkDecorator(BallotSecurityDecorator):
-    """Decorador concreto que añade marcas de agua forenses y código de comprobante para el ciudadano."""
+    """Decorador concreto que añade marca de agua y código de recibo para el ciudadano."""
 
     def __init__(
         self,

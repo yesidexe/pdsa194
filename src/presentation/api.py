@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from src.core.settings import SESSION_COOKIE_NAME, SESSION_MAX_AGE_SECONDS
 from src.modules.census.census_adapter import SqliteCensusAdapter
+from src.modules.facade.voting_facade import TallyAlreadyGeneratedError
 from src.modules.security.access_proxy import ElectoralAccessProxy, UserSession
 from src.modules.voting.candidate_flyweight import CandidateFlyweightFactory
 from src.modules.voting.vote_store import AlreadyVotedError
@@ -300,6 +301,8 @@ def create_api_app(target: Union[ElectoralAccessProxy, ElectoralSystemHolder]) -
                 "signatures": report.officer_signatures,
                 "formatted_summary": report.to_formatted_summary(),
             }
+        except TallyAlreadyGeneratedError as exc:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
         except PermissionError as exc:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
         except ValueError as exc:

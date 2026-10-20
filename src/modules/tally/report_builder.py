@@ -80,7 +80,7 @@ class TallyReportBuilder(ABC):
 
 
 class OfficialTallyReportBuilder(TallyReportBuilder):
-    """Constructor concreto que implementa el ensamble progresivo y sellado digital."""
+    """Constructor concreto que implementa el ensamble progresivo del acta y su sello SHA-256."""
 
     def __init__(self) -> None:
         self.reset()

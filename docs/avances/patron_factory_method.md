@@ -34,6 +34,7 @@ classDiagram
         +str ballot_id
         +datetime issued_at
         +get_selection* str
+        +base_ballot Ballot
     }
     class CandidateBallot {
         +str candidate_id
@@ -100,6 +101,11 @@ class Ballot(ABC):
     def get_selection(self) -> str:
         """Devuelve la opción seleccionada de forma legible."""
         pass
+
+    @property
+    def base_ballot(self) -> "Ballot":
+        """Devuelve la papeleta base, sin decoradores."""
+        return self
 
 @dataclass(frozen=True)
 class CandidateBallot(Ballot):
@@ -180,7 +186,7 @@ class BlankBallotCreator(BallotCreator):
 ## 5. Análisis de Ingeniería de Software
 
 ### 5.1 Principio Abierto/Cerrado (OCP)
-El sistema queda **abierto a la extensión pero cerrado a la modificación**: si el día de mañana la normativa electoral exige un nuevo tipo de tarjetón (ej. voto para consulta indígena), solo se crean dos clases: `IndigenousBallot` y `IndigenousBallotCreator`. No se modifica ni una sola línea del código existente.
+El sistema queda **abierto a la extensión pero cerrado a la modificación**: si el día de mañana la normativa electoral exige un nuevo tipo de tarjetón (ej. voto para consulta indígena), solo se crean dos clases: `IndigenousBallot` y `IndigenousBallotCreator`. No se modifican las clases existentes; se agrega la nueva pareja producto/creador y se conecta en el punto de composición.
 
 ### 5.2 Inmutabilidad de los Sufragios
 Los productos heredan de `@dataclass(frozen=True)`. Esto asegura que una vez emitido el voto, sus atributos no puedan ser alterados en memoria, alineándose con el principio de integridad del sufragio.

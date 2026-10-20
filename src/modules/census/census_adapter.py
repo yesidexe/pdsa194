@@ -1,29 +1,4 @@
-"""Módulo para la adaptación de censos electorales heterogéneos mediante el patrón Adapter.
-
-===============================================================================
-EXPLICACIÓN PEDAGÓGICA DEL PATRÓN ADAPTER EN ESTE MÓDULO:
-===============================================================================
-¿Qué problema resuelve?
-En la vida real, una plataforma de votación no puede exigir que todas las entidades
-(la Registraduría del Estado Civil, una universidad, o un archivo histórico legado)
-entreguen sus listas de votantes exactamente con los mismos nombres de columnas o
-en el mismo formato técnico.
-- La Registraduría puede entregar un archivo plano CSV antiguo con columnas como 'cedula', 'nombres'.
-- Una Universidad puede entregar una exportación JSON de su sistema académico con 'codigo', 'estudiante'.
-- Un sistema moderno en producción puede conectarse a una base de datos relacional SQL (SQLite).
-
-Si nuestro sistema electoral tuviese que entender cada formato directamente, el código
-del núcleo (la urna, las mesas, la cabina) se llenaría de 'if/else' y se rompería cada
-vez que una entidad cambie su formato.
-
-¿Cómo lo resuelve el patrón Adapter?
-1. Define un contrato único estándar llamado 'Target' (aquí: la interfaz `ICensusRegistry`).
-2. El sistema electoral (la fachada y la cabina) SOLO habla con `ICensusRegistry`.
-3. Creamos clases 'Adaptadoras' (`JsonCensusAdapter`, `CsvCensusAdapter`, `SqliteCensusAdapter`)
-   que reciben el formato extraño o la base de datos externa y traducen todo al
-   formato canónico estándar `VoterCensusRecord`.
-===============================================================================
-"""
+"""Adaptadores de censo electoral (SQLite, JSON y CSV) para el patrón Adapter."""
 from __future__ import annotations
 from abc import ABC, abstractmethod
 import csv
@@ -237,14 +212,14 @@ class CsvCensusAdapter(ICensusRegistry):
 
 
 class SqliteCensusAdapter(ICensusRegistry):
-    """Adaptador concreto para Base de Datos Relacional SQLite (Censo Oficial Registraduría).
+    """Adaptador concreto para una base de datos relacional SQLite.
 
     Este adaptador conecta directamente con el motor de base de datos local SQLite
     a través del ORM SQLAlchemy, permitiendo:
     1. Consultar en vivo la habilitación de un elector.
     2. Registrar nuevos votantes en caliente desde el panel administrativo.
-    3. Habilitar o inhabilitar judicialmente a un ciudadano.
-    4. Garantizar la persistencia permanente de los datos en disco ('e_voting.db').
+    3. Habilitar o inhabilitar a un ciudadano.
+    4. Persistir los datos en disco ('e_voting.db') mientras el archivo no se borre.
     """
 
     def __init__(self, election_type: str = "NATIONAL") -> None:

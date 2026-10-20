@@ -32,7 +32,7 @@ class CandidateFlyweightFactory:
         party_name: str = "Independiente",
         campaign_slogan: str = "Por un futuro transparente",
         party_color_hex: str = "#2563EB",
-        photo_url: str = "/static/candidates/default.png",
+        photo_url: str = "/static/candidates/default.svg",
     ) -> CandidateMetadataFlyweight:
         """Retorna la instancia compartida existente o crea una nueva si no está en el catálogo."""
         c_id = str(candidate_id).strip()

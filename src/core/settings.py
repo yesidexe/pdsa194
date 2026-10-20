@@ -7,8 +7,9 @@ La aplicación está pensada para ejecutarse en local con:
     python3 -m src.main
 
 No se requieren variables de entorno obligatorias para la demo: si no existe un
-archivo `.env`, se usan valores locales seguros por defecto. En un despliegue
-real, todos estos valores deben venir de un gestor de secretos.
+archivo `.env`, se usan valores de demostración. En un despliegue real, todos
+estos valores deben venir de un gestor de secretos y las credenciales de ejemplo
+deben reemplazarse.
 """
 from __future__ import annotations
 
