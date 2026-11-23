@@ -2,7 +2,6 @@
 
 > Proyecto de votación electrónica local-first, en desarrollo.
 > No está certificado para elecciones reales.
->
 > La documentación completa en PDF está en [doc_completa.pdf](docs/doc_completa.pdf) y en Word en [doc_completa.docx](docs/doc_completa.docx).
 
 ## 1. Contextualización del Tema

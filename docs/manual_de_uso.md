@@ -145,6 +145,30 @@ El acceso usa una única cuenta local. La sesión se guarda en una cookie `HttpO
 
 *Figura 6. Panel administrativo: estado de la urna, cierre y acta.*
 
+### 3.2.1 Censo electoral
+
+La sección **Administración de Electores Registrados** permite inscribir o actualizar un ciudadano, asignarle mesa y PIN, y habilitarlo o inhabilitarlo. La tabla conserva el censo persistido y se desplaza cuando hay muchos registros.
+
+![Administración de electores registrados](capturas/07_admin_panel_electores.png)
+
+*Figura 7. Administración de electores registrados.*
+
+### 3.2.2 Catálogo de candidatos
+
+El **Catálogo de Candidatos** permite registrar, editar y activar o desactivar candidatos. Solo se edita en borrador o con la urna cerrada y sin votos; una vez hay sufragios, la papeleta queda congelada.
+
+![Catálogo de candidatos](capturas/08_admin_panel_candidatos.png)
+
+*Figura 8. Catálogo de candidatos.*
+
+### 3.2.3 Bitácora de auditoría
+
+La **Bitácora de Auditoría Electoral** registra en orden cronológico las verificaciones, emisiones, aperturas, cierres, actas y reinicios. Cada evento guarda hora UTC, acción, usuario, rol, estado y detalle; la bitácora se conserva en la base y se actualiza automáticamente.
+
+![Bitácora de auditoría electoral](capturas/09_admin_panel_bitacora.png)
+
+*Figura 9. Bitácora de auditoría electoral.*
+
 ### 3.3 Actualización automática
 
 - La cabina consulta el estado de la urna cada **5 segundos** y la modalidad cada **10 segundos**. Si el administrador cierra la urna, el botón de verificación se deshabilita y cambia a “Urna cerrada”.
