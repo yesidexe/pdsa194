@@ -21,19 +21,19 @@
     <!-- Encabezado Institucional Oficial -->
     <header class="sticky top-0 z-50 w-full bg-slate-900 text-white shadow-sm border-b border-slate-800">
         <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-3">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
                     <i class="fa-solid fa-landmark text-lg text-amber-400"></i>
                 </div>
-                <div>
-                    <h1 id="headerInstitutionName" class="text-lg font-bold tracking-tight">CONSEJO NACIONAL ELECTORAL</h1>
-                    <p id="headerElectionSubtitle" class="text-xs text-slate-300">Plataforma Oficial de Votación Digital</p>
+                <div class="min-w-0">
+                    <h1 id="headerInstitutionName" class="text-lg font-bold tracking-tight leading-tight break-words">CONSEJO NACIONAL ELECTORAL</h1>
+                    <p id="headerElectionSubtitle" class="text-xs text-slate-300 leading-snug break-words">Plataforma de Votación Digital</p>
                 </div>
-                <span class="hidden sm:inline-flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/20 text-[11px] font-semibold">
-                    <i class="fa-solid fa-flask"></i> Entorno de simulación
+                <span class="hidden sm:inline-flex shrink-0 items-center gap-1.5 ml-2 px-2.5 py-1 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/20 text-[11px] font-semibold">
+                    <i class="fa-solid fa-lock"></i> Entorno local
                 </span>
             </div>
-            <div class="flex flex-wrap items-center justify-center gap-2">
+            <div class="flex flex-wrap items-center justify-center gap-2 md:shrink-0">
                 <span id="badgeUrna" class="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 radar-beacon"></span>
                     <span>Urna Abierta</span>
@@ -253,7 +253,7 @@
     </main>
 
     <footer class="max-w-4xl mx-auto px-4 pb-8 text-center text-[11px] text-slate-400">
-        Plataforma de simulación electoral · Ejecución local · Datos sintéticos
+        Plataforma de votación electrónica · Ejecución local · Datos sintéticos
     </footer>
 
     <div id="toastContainer" class="fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 pointer-events-none px-4"></div>

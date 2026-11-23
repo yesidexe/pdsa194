@@ -1,8 +1,8 @@
 """Configuración común de pruebas.
 
 Se usa una base SQLite separada (``test_e_voting.db``) para no contaminar la
-base de demostración. El archivo se borra antes de importar la aplicación y se
-vuelve a sembrar automáticamente.
+base de demostración. Cada prueba arranca con la base recreada y el sistema
+reconstruido, de modo que el orden de ejecución no altere el resultado.
 """
 from __future__ import annotations
 
@@ -28,6 +28,18 @@ for suffix in ("", "-wal", "-shm"):
 
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+
+@pytest.fixture(autouse=True)
+def fresh_environment():
+    """Recrea la base y reconstruye el sistema antes de cada prueba."""
+    from src.core.database import reset_database
+    from src.main import bootstrap_electoral_system, system_holder
+
+    reset_database()
+    system_holder.current_mode = "national"
+    system_holder.proxy = bootstrap_electoral_system("national")
+    yield
 
 
 @pytest.fixture

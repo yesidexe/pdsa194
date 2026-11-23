@@ -23,24 +23,24 @@
     <!-- Encabezado Fijo y Sólido -->
     <header class="sticky top-0 z-50 w-full bg-slate-900 text-white shadow-sm border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-3">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
                     <i class="fa-solid fa-chart-line text-lg text-blue-300"></i>
                 </div>
                 <div>
-                    <div class="flex items-center gap-2">
-                        <h1 class="text-lg font-bold tracking-tight">RESULTADOS EN VIVO</h1>
+                    <div class="flex flex-wrap items-center gap-2 min-w-0">
+                        <h1 class="text-lg font-bold tracking-tight leading-tight break-words">RESULTADOS EN VIVO</h1>
                         <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                             <span class="w-2 h-2 rounded-full bg-emerald-400 radar-beacon"></span> LIVE
                         </span>
                     </div>
-                    <p id="dashboardSubheader" class="text-xs text-slate-300">Escrutinio público y transparente en tiempo real</p>
+                    <p id="dashboardSubheader" class="text-xs text-slate-300 leading-snug break-words">Escrutinio público y transparente en tiempo real</p>
                 </div>
-                <span class="hidden sm:inline-flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/20 text-[11px] font-semibold">
-                    <i class="fa-solid fa-flask"></i> Entorno de simulación
+                <span class="hidden sm:inline-flex shrink-0 items-center gap-1.5 ml-2 px-2.5 py-1 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/20 text-[11px] font-semibold">
+                    <i class="fa-solid fa-lock"></i> Entorno local
                 </span>
             </div>
-            <div class="flex flex-wrap items-center justify-center gap-2">
+            <div class="flex flex-wrap items-center justify-center gap-2 md:shrink-0">
                 <span id="latencyPill" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-slate-300 bg-white/5 border border-white/10 text-[11px] font-mono">
                     <i class="fa-solid fa-circle-dot text-[8px] text-emerald-400"></i> <span id="latencyValue">Sync: 12ms</span>
                 </span>

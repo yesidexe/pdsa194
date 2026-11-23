@@ -1,6 +1,9 @@
 # Plataforma de Votación Electrónica
 
-> Prototipo funcional local para demostración y aprendizaje. No está certificado para elecciones reales.
+> Proyecto de votación electrónica local-first, en desarrollo.
+> No está certificado para elecciones reales.
+>
+> La documentación completa en PDF está en [doc_completa.pdf](docs/doc_completa.pdf) y en Word en [doc_completa.docx](docs/doc_completa.docx).
 
 ## 1. Contextualización del Tema
 
@@ -74,7 +77,8 @@ En palabras simples:
 - **Cabina de votación digital** con autenticación por documento y PIN.
 - **Voto para candidato o voto en blanco**, con confirmación y comprobante.
 - **Resultados en vivo** con gráficos y porcentajes de participación.
-- **Panel administrativo protegido** para abrir y cerrar la jornada, gestionar el censo, generar el acta y revisar la auditoría.
+- **Panel administrativo protegido** para abrir y cerrar la jornada, gestionar el censo y el catálogo de candidatos, generar el acta y revisar la auditoría.
+- **Acta persistida y descargable** en JSON/CSV; la auditoría se guarda con hash chain y también se exporta.
 - **Dos modalidades electorales:** nacional (CNE) y universitaria (UDI).
 - **Conmutación de modalidad** sin reiniciar la aplicación.
 
@@ -84,20 +88,15 @@ En palabras simples:
 
 ## 4. Documentación
 
-> La documentación completa en formato pdf está en el archivo [doc_completa.pdf](docs/doc_completa.pdf) y en formato docx está en el archivo [doc_completa.docx](docs/doc_completa.docx).
-
-La plataforma se organizó con **12 patrones de diseño** agrupados en ocho documentos. Cada documento explica el problema, la solución, su diagrama y la relación con el código. El detalle técnico vive allí, no en este README.
+La plataforma implementa **12 patrones de diseño GoF**, equilibrados por categoría: **4 creacionales, 5 estructurales y 3 de comportamiento**. La documentación se organiza en tres documentos por categoría; cada patrón explica el problema, la solución, su UML, el código y el argumento para conservarlo o descartarlo.
 
 | Documento | Qué aporta | Enlace |
 |---|---|---|
-| Configuración única (Singleton) | Mantener una sola configuración de la jornada electoral. | [Abrir](docs/avances/patron_singleton.md) |
-| Creación de papeletas (Factory Method) | Crear distintos tipos de voto sin mezclar la lógica de emisión. | [Abrir](docs/avances/patron_factory_method.md) |
-| Familias electorales (Abstract Factory) | Adaptar el sistema a elecciones nacionales y universitarias. | [Abrir](docs/avances/patron_abstract_factory.md) |
-| Acta de escrutinio (Builder) | Construir el acta oficial paso a paso y con sello de integridad. | [Abrir](docs/avances/patron_builder.md) |
-| Mesas de votación (Prototype) | Clonar mesas a partir de plantillas preconfiguradas. | [Abrir](docs/avances/patron_prototype.md) |
-| Censos y boletines (Adapter + Bridge) | Integrar censos externos y transmitir resultados por varios canales. | [Abrir](docs/avances/patron_adapter_bridge.md) |
-| Jerarquías, sellos y fachada (Composite + Decorator + Facade) | Organizar el territorio, proteger el voto y coordinar los subsistemas. | [Abrir](docs/avances/patron_composite_decorator_facade.md) |
-| Acceso y catálogo de candidatos (Proxy + Flyweight) | Proteger las operaciones administrativas y compartir la información de los candidatos. | [Abrir](docs/avances/patron_proxy_flyweight.md) |
+| Creacionales | Singleton, Factory Method, Abstract Factory, Builder y el descartado Prototype. | [Abrir](docs/avances/01_creacionales.md) |
+| Estructurales | Adapter, Decorator, Facade, Flyweight, Proxy y los descartados Bridge y Composite. | [Abrir](docs/avances/02_estructurales.md) |
+| Comportamiento | State, Chain of Responsibility, Observer y los ocho patrones evaluados y no adoptados. | [Abrir](docs/avances/03_comportamiento.md) |
+
+Las decisiones de arquitectura están en [`docs/adr/`](docs/adr/): local-first, selección de los 12 patrones, persistencia de estado/auditoría y catálogo de candidatos.
 
 ---
 
@@ -121,9 +120,32 @@ La aplicación queda disponible en:
 | Administración | [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin) | Panel administrativo; redirige a `/admin/login` si no hay sesión. |
 | Documentación de la API | [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) | Probar los endpoints REST. |
 
-No necesitas crear `.env` para la demo.
+No necesitas crear `.env` para ejecutar la aplicación en local.
 
-**Credenciales de demo:**
+### Pruebas
+
+```bash
+./venv/bin/pytest tests/ -q --cov=src --cov-report=term-missing
+```
+
+La suite usa una base separada (`test_e_voting.db`), recrea el entorno antes de
+cada prueba y cubre autenticación, voto único, concurrencia, Estado de la
+jornada, cadena de validación, auditoría con hash chain, candidatos, acta
+persistida y reset.
+
+También hay atajos y CI:
+
+```bash
+make install   # crea el venv e instala dependencias
+make test      # pytest + cobertura mínima del 80 %
+make lint      # Ruff
+make run       # servidor local
+```
+
+El workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) corre lint y
+pruebas en cada push o pull request.
+
+**Credenciales de prueba:**
 
 | Rol | Documento / usuario | Clave |
 |---|---|---|

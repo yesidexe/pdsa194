@@ -1,10 +1,8 @@
 """Módulo para la creación de familias coherentes de componentes electorales."""
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Dict
 
 
-# --- PRODUCTO FAMILIA A: Validador de Credencial del Votante ---
 class CredentialValidator(ABC):
     """Interfaz abstracta para validar el documento del votante según la elección."""
 
@@ -37,7 +35,6 @@ class StudentCodeValidator(CredentialValidator):
         return "Código de Carnet Estudiantil"
 
 
-# --- PRODUCTO FAMILIA B: Encabezado Oficial de la Papeleta ---
 class BallotHeader(ABC):
     """Interfaz abstracta para el encabezado oficial de las papeletas."""
 
@@ -60,7 +57,6 @@ class UniversityBallotHeader(BallotHeader):
         return "UNIVERSIDAD DE INVESTIGACIÓN Y DESARROLLO - CONSEJO SUPERIOR"
 
 
-# --- PRODUCTO FAMILIA C: Regla de Escrutinio / Decisión ---
 class TallyRule(ABC):
     """Interfaz abstracta para determinar el criterio de victoria en el escrutinio."""
 
@@ -93,7 +89,6 @@ class SimplePluralityTallyRule(TallyRule):
         return f"Ganador electo por Mayoría Simple: {winner} ({votes_summary[winner]} votos)"
 
 
-# --- FÁBRICA ABSTRACTA ---
 class ElectoralFamilyFactory(ABC):
     """Define los métodos de fabricación para una familia coherente de componentes electorales."""
 
@@ -110,7 +105,6 @@ class ElectoralFamilyFactory(ABC):
         pass
 
 
-# --- FÁBRICAS CONCRETAS ---
 class NationalElectionFactory(ElectoralFamilyFactory):
     """Produce componentes específicos para elecciones nacionales."""
 

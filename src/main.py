@@ -8,21 +8,15 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import uvicorn
 
-# Núcleo y Patrones
 from src.core import settings
 from src.core.config import ElectoralConfigManager
+from src.core.database import init_db
+from src.modules.audit.service import AuditService
 from src.modules.census.census_adapter import SqliteCensusAdapter
 from src.modules.election.election_factory import (
     NationalElectionFactory,
     UniversityElectionFactory,
 )
-from src.modules.election.station_prototype import VotingStation
-from src.modules.election.jurisdiction_composite import (
-    ElectoralJurisdictionComposite,
-    VotingStationLeaf,
-)
-from src.modules.transmission.bulletin_bridge import ConsoleTransmissionChannel
-from src.modules.voting.candidate_flyweight import CandidateFlyweightFactory
 from src.modules.facade.voting_facade import VotingSystemFacade
 from src.modules.security.access_proxy import ElectoralAccessProxy, UserSession, UserRole
 from src.presentation.api import create_api_app, ElectoralSystemHolder
@@ -32,149 +26,46 @@ from src.presentation.auth import is_admin_request
 def bootstrap_electoral_system(mode: str = "national") -> ElectoralAccessProxy:
     """Inicializa y orquesta todos los componentes del sistema según el modo seleccionado."""
     mode_clean = mode.lower().strip()
+    init_db()
     ElectoralConfigManager.reset_for_testing()
-    CandidateFlyweightFactory.reset_pool()
 
     if mode_clean == "university":
-        # =====================================================================
-        # PERFIL 2: ELECCIONES UNIVERSITARIAS (UDI - CONSEJO SUPERIOR)
-        # =====================================================================
         facade = VotingSystemFacade(
             institution_name="Universidad de Investigación y Desarrollo (UDI)",
             election_title="Elecciones de Voceros al Consejo Superior Universitario 2026",
             election_type="UNIVERSITY",
         )
 
-        # Candidatos compartidos en memoria (Flyweight)
-        CandidateFlyweightFactory.get_candidate(
-            candidate_id="VOC-01",
-            candidate_name="Camilo Suárez",
-            party_name="Lista 1 - Estudiantes por el Cambio",
-            campaign_slogan="Liderazgo, transparencia e innovación académica",
-            party_color_hex="#4F46E5",
-        )
-        CandidateFlyweightFactory.get_candidate(
-            candidate_id="VOC-02",
-            candidate_name="Valentina Gómez",
-            party_name="Lista 2 - Innovación Universitaria",
-            campaign_slogan="Conectividad, investigación y bienestar estudiantil",
-            party_color_hex="#0D9488",
-        )
-        CandidateFlyweightFactory.get_candidate(
-            candidate_id="VOC-03",
-            candidate_name="Sofía Vargas",
-            party_name="Lista 3 - Voces UDI",
-            campaign_slogan="Cultura, representación y participación activa",
-            party_color_hex="#EA580C",
-        )
-        CandidateFlyweightFactory.get_candidate(
-            candidate_id="VOC-04",
-            candidate_name="Daniel Rojas",
-            party_name="Lista 4 - Bienestar y Deporte",
-            campaign_slogan="Campus saludable, inclusivo y con más apoyo estudiantil",
-            party_color_hex="#7C3AED",
-        )
-
-        # Censo Estudiantil Oficial persistido en SQLite (Adapter)
         census = SqliteCensusAdapter(election_type="UNIVERSITY")
-
-        station_template = VotingStation(
-            station_id="TEMPLATE",
-            polling_place="Campus Central Universitario",
-            zone_code="ZONA-CAMPUS",
-            allowed_ballot_types=["CANDIDATE", "BLANK"],
-        )
-        facade.register_station_template("STD_POLL", station_template)
-
-        m1 = facade.spawn_station("STD_POLL", "MESA-01", "TERM-UNI-01", ["Jurado López", "Jurado Méndez"])
-        m2 = facade.spawn_station("STD_POLL", "MESA-02", "TERM-UNI-02", ["Jurado Díaz", "Jurado Silva"])
-
-        sede = ElectoralJurisdictionComposite("SEDE-01", "Campus Central UDI", "SEDE")
-        facultad = ElectoralJurisdictionComposite("FAC-ING", "Edificio de Ingenierías", "FACULTAD")
-        facultad.add(VotingStationLeaf(m1)).add(VotingStationLeaf(m2))
-        sede.add(facultad)
-
-        channel = ConsoleTransmissionChannel()
 
         facade.setup_environment(
             census_registry=census,
             family_factory=UniversityElectionFactory(),
-            transmission_channel=channel,
-            jurisdiction_tree=sede,
+            station_ids=["MESA-01", "MESA-02"],
+            jurisdiction_name="Campus Central UDI",
         )
+        facade.refresh_candidate_catalog()
 
     else:
-        # =====================================================================
-        # PERFIL 1: ELECCIÓN NACIONAL (CNE - REGISTRADURÍA NACIONAL)
-        # =====================================================================
         facade = VotingSystemFacade(
             institution_name="Consejo Nacional Electoral",
             election_title="Elección Oficial de Representantes a la Cámara 2026",
             election_type="NATIONAL",
         )
 
-        CandidateFlyweightFactory.get_candidate(
-            candidate_id="CAND-01",
-            candidate_name="Gabriel Silva",
-            party_name="Alianza Verde Digital",
-            campaign_slogan="Tecnología, transparencia y educación para el futuro",
-            party_color_hex="#16A34A",
-        )
-        CandidateFlyweightFactory.get_candidate(
-            candidate_id="CAND-02",
-            candidate_name="Elena Torres",
-            party_name="Pacto Innovación Ciudadana",
-            campaign_slogan="Gestión abierta, cero corrupción y participación real",
-            party_color_hex="#2563EB",
-        )
-        CandidateFlyweightFactory.get_candidate(
-            candidate_id="CAND-03",
-            candidate_name="Carlos Mendoza",
-            party_name="Movimiento Renovación",
-            campaign_slogan="Experiencia y liderazgo con rigor institucional",
-            party_color_hex="#D97706",
-        )
-        CandidateFlyweightFactory.get_candidate(
-            candidate_id="CAND-04",
-            candidate_name="Lucía Herrera",
-            party_name="Frente Ciudadano Independiente",
-            campaign_slogan="Servicios públicos cercanos y presupuesto participativo",
-            party_color_hex="#7C3AED",
-        )
-
-        # Censo Nacional Oficial persistido en SQLite (Adapter)
         census = SqliteCensusAdapter(election_type="NATIONAL")
-
-        station_template = VotingStation(
-            station_id="TEMPLATE",
-            polling_place="Colegio Mayor Nacional",
-            zone_code="ZONA-NORTE",
-            allowed_ballot_types=["CANDIDATE", "BLANK"],
-        )
-        facade.register_station_template("STD_POLL", station_template)
-
-        m1 = facade.spawn_station("STD_POLL", "MESA-01", "TERM-BIO-01", ["Jurado Pérez", "Jurado Gómez"])
-        m2 = facade.spawn_station("STD_POLL", "MESA-02", "TERM-BIO-02", ["Jurado Rojas", "Jurado Castro"])
-
-        distrito = ElectoralJurisdictionComposite("DIS-01", "Circunscripción Central", "DISTRITO")
-        puesto = ElectoralJurisdictionComposite("PUE-01", "Colegio Mayor Nacional", "PUESTO")
-        puesto.add(VotingStationLeaf(m1)).add(VotingStationLeaf(m2))
-        distrito.add(puesto)
-
-        channel = ConsoleTransmissionChannel()
 
         facade.setup_environment(
             census_registry=census,
             family_factory=NationalElectionFactory(),
-            transmission_channel=channel,
-            jurisdiction_tree=distrito,
+            station_ids=["MESA-01", "MESA-02"],
+            jurisdiction_name="Circunscripción Central",
         )
+        facade.refresh_candidate_catalog()
 
-    # Envoltura con Proxy de Seguridad y Control de Acceso
-    proxy = ElectoralAccessProxy(facade)
+    proxy = ElectoralAccessProxy(facade, audit_service=AuditService())
 
-    # Apertura inicial opcional. Para una demo local se abre automáticamente;
-    # en una jornada real el administrador debe abrirla desde el panel.
+    # La demo abre la urna al arrancar; en una jornada real la abre el admin.
     if settings.AUTO_OPEN_POLLS:
         admin_session = UserSession(
             user_id="ADMIN-BOOTSTRAP",
@@ -184,7 +75,6 @@ def bootstrap_electoral_system(mode: str = "national") -> ElectoralAccessProxy:
         try:
             proxy.open_polls(admin_session)
         except ValueError:
-            # Una jornada ya escrutada se reconstruye cerrada hasta que se reinicie.
             pass
 
     return proxy
@@ -199,7 +89,6 @@ class AppSystemHolder(ElectoralSystemHolder):
         return self.proxy
 
 
-# Instanciación del sistema
 initial_mode = os.getenv("ELECTION_MODE", "national").strip().lower()
 if initial_mode not in {"national", "university"}:
     initial_mode = "national"
@@ -209,7 +98,6 @@ system_holder = AppSystemHolder(
 )
 app = create_api_app(system_holder)
 
-# Configuración de Plantillas Web (Jinja2)
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "presentation" / "templates"))
 STATIC_DIR = BASE_DIR / "presentation" / "static"

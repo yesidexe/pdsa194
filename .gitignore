@@ -31,6 +31,7 @@ wheels/
 .installed.cfg
 *.egg
 .pytest_cache/
+.ruff_cache/
 .coverage
 htmlcov/
 *.cover

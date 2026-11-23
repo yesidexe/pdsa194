@@ -21,19 +21,19 @@
     <!-- Encabezado Fijo y Sólido -->
     <header class="sticky top-0 z-50 w-full bg-slate-900 text-white shadow-sm border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center gap-3">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-10 h-10 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
                     <i class="fa-solid fa-user-shield text-lg text-indigo-300"></i>
                 </div>
-                <div>
-                    <h1 class="text-lg font-bold tracking-tight">PANEL DE CONTROL ELECTORAL</h1>
-                    <p id="adminSubheader" class="text-xs text-slate-300">Gestión de urnas, censo y escrutinio</p>
+                <div class="min-w-0">
+                    <h1 class="text-lg font-bold tracking-tight leading-tight break-words">PANEL DE CONTROL ELECTORAL</h1>
+                    <p id="adminSubheader" class="text-xs text-slate-300 leading-snug break-words">Gestión de urnas, censo y escrutinio</p>
                 </div>
-                <span class="hidden lg:inline-flex items-center gap-1.5 ml-2 px-2.5 py-1 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/20 text-[11px] font-semibold">
-                    <i class="fa-solid fa-flask"></i> Entorno de simulación
+                <span class="hidden lg:inline-flex shrink-0 items-center gap-1.5 ml-2 px-2.5 py-1 rounded-full bg-amber-400/10 text-amber-300 border border-amber-400/20 text-[11px] font-semibold">
+                    <i class="fa-solid fa-lock"></i> Entorno local
                 </span>
             </div>
-            <div class="flex flex-wrap items-center justify-center gap-2">
+            <div class="flex flex-wrap items-center justify-center gap-2 md:shrink-0">
                 <a href="/" class="text-xs bg-white/10 hover:bg-white/15 transition px-3 py-1.5 rounded-lg border border-white/15 flex items-center gap-1.5">
                     <i class="fa-solid fa-person-booth"></i> Cabina
                 </a>
@@ -192,7 +192,7 @@
 
         </div>
 
-        <!-- 2.1 REINICIO DE JORNADA (entorno de pruebas) -->
+        <!-- 2.1 REINICIO DE JORNADA -->
         <section class="bg-white p-6 sm:p-7 rounded-2xl shadow-sm border border-amber-200 space-y-3">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div class="flex items-start gap-3">
@@ -200,11 +200,10 @@
                         <i class="fa-solid fa-rotate-left"></i>
                     </div>
                     <div>
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-amber-600">Modo de pruebas</span>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-amber-600">Configuración local</span>
                         <h2 class="text-lg font-bold text-slate-900">Reiniciar jornada</h2>
                         <p class="text-xs text-slate-500 max-w-2xl mt-0.5">
-                            Borra todas las papeletas y participaciones de la elección activa, conserva el censo y vuelve a abrir la urna.
-                            Úsalo para repetir la demo sin identificar ni eliminar el voto de una persona concreta.
+                            Borra todas las papeletas y participaciones de la elección activa; conserva el censo y deja la jornada en borrador.
                         </p>
                     </div>
                 </div>
@@ -334,7 +333,91 @@
             </div>
         </section>
 
-        <!-- 5. SECCIÓN: BITÁCORA DE AUDITORÍA -->
+        <!-- 5. SECCIÓN: CATÁLOGO DE CANDIDATOS -->
+        <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-4 gap-2">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Configuración de la papeleta</span>
+                    <h2 class="text-xl font-bold text-slate-900">Catálogo de Candidatos</h2>
+                    <p class="text-xs text-slate-400">
+                        Solo se edita en borrador o con la urna cerrada y sin votos. Una vez hay sufragios, la papeleta queda congelada.
+                    </p>
+                </div>
+                <button onclick="loadCandidates()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-medium">
+                    <i class="fa-solid fa-arrows-rotate"></i> Actualizar catálogo
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-1 bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-user-tie text-indigo-600"></i>
+                        <span id="candidateFormTitle">Registrar candidato</span>
+                    </h3>
+                    <form id="formCandidate" onsubmit="handleCandidateSubmit(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Identificador</label>
+                            <input id="candidateId" required placeholder="Ej: CAND-05"
+                                class="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Nombre</label>
+                            <input id="candidateName" required placeholder="Nombre del candidato"
+                                class="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Partido / Lista</label>
+                            <input id="candidateParty" required placeholder="Partido o lista"
+                                class="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Lema (opcional)</label>
+                            <input id="candidateSlogan" placeholder="Lema de campaña"
+                                class="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Color</label>
+                                <input id="candidateColor" type="color" value="#2563EB"
+                                    class="w-full h-9 p-1 rounded-lg border border-slate-300 bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Orden</label>
+                                <input id="candidateOrder" type="number" min="0" max="999" value="0"
+                                    class="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-xl text-xs shadow-sm transition flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-floppy-disk"></i> Guardar
+                            </button>
+                            <button type="button" onclick="resetCandidateForm()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2.5 px-3 rounded-xl text-xs transition">
+                                Limpiar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="lg:col-span-2 table-scroll">
+                    <table class="w-full text-left text-[13px] data-table">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-slate-400 font-semibold bg-slate-50">
+                                <th class="py-2.5 px-3">ID</th>
+                                <th class="py-2.5 px-3">Candidato</th>
+                                <th class="py-2.5 px-3">Partido / Lista</th>
+                                <th class="py-2.5 px-3">Estado</th>
+                                <th class="py-2.5 px-3 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="candidateTableBody" class="divide-y divide-slate-100">
+                            <tr><td colspan="5" class="text-center py-6 text-slate-400">Cargando candidatos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 6. SECCIÓN: BITÁCORA DE AUDITORÍA -->
         <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
             <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                 <div>
@@ -373,360 +456,6 @@
     <div id="toastContainer" class="fixed inset-x-0 bottom-4 z-[60] flex flex-col items-center gap-2 pointer-events-none px-4"></div>
 
     <!-- Script de Administración -->
-    <script>
-        let isUrnaOpen = false;
-        let isTallied = false;
-        let currentMode = "national";
-
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toastContainer');
-            if (!container) return;
-            const icons = { success: 'fa-circle-check', error: 'fa-circle-exclamation', info: 'fa-circle-info' };
-            const toast = document.createElement('div');
-            toast.className = `toast toast-${type}`;
-            const icon = document.createElement('i');
-            icon.className = `fa-solid ${icons[type] || icons.info} mt-0.5`;
-            const text = document.createElement('span');
-            text.textContent = String(message ?? '');
-            toast.append(icon, text);
-            container.appendChild(toast);
-            window.setTimeout(() => {
-                toast.classList.add('toast-out');
-                window.setTimeout(() => toast.remove(), 220);
-            }, 4200);
-        }
-
-        function escapeHtml(value) {
-            return String(value ?? '')
-                .replaceAll('&', '&amp;')
-                .replaceAll('<', '&lt;')
-                .replaceAll('>', '&gt;')
-                .replaceAll('"', '&quot;')
-                .replaceAll("'", '&#039;');
-        }
-
-        async function apiFetch(url, options = {}) {
-            const response = await fetch(url, options);
-            if (response.status === 401) {
-                window.location.href = '/admin/login';
-                throw new Error('Sesión expirada');
-            }
-            return response;
-        }
-
-        async function logoutAdmin() {
-            try {
-                await fetch('/api/admin/logout', { method: 'POST' });
-            } finally {
-                window.location.href = '/admin/login';
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            loadElectionMode();
-            loadAuditLogs();
-            // Estado de urna, censo y bitácora se refrescan sin pulsar "Actualizar".
-            window.setInterval(loadElectionMode, 10000);
-            window.setInterval(loadAuditLogs, 10000);
-        });
-
-        async function loadElectionMode() {
-            try {
-                const res = await fetch('/api/election/mode');
-                const data = await res.json();
-                currentMode = data.mode;
-                isUrnaOpen = data.is_open;
-                isTallied = Boolean(data.is_tallied);
-
-                document.getElementById('adminSubheader').innerText = `${data.institution_name} • ${data.election_title}`;
-                const badgeMode = document.getElementById('badgeCurrentMode');
-                badgeMode.innerText = data.mode.toUpperCase() + ` (${data.document_type})`;
-
-                const statusEl = document.getElementById('adminUrnaStatusText');
-                const statusHint = document.getElementById('urnaStatusHint');
-                const statusDot = document.getElementById('urnaStatusDot');
-                const toggleButton = document.getElementById('btnToggleUrna');
-                const toggleLabel = document.getElementById('btnToggleUrnaLabel');
-                const toggleIcon = document.getElementById('btnToggleUrnaIcon');
-
-                if (isTallied) {
-                    statusEl.innerText = "Cerrada y escrutada";
-                    statusEl.className = "text-lg font-bold text-indigo-700";
-                    statusHint.innerText = "El acta ya fue generada. Reinicia la jornada para volver a votar.";
-                    statusDot.className = "w-2.5 h-2.5 rounded-full bg-indigo-500 shrink-0";
-                    toggleButton.disabled = true;
-                    toggleLabel.innerText = "Jornada escrutada";
-                    toggleIcon.className = "fa-solid fa-lock";
-                } else {
-                    toggleButton.disabled = false;
-                    if (data.is_open) {
-                        statusEl.innerText = "Abierta";
-                        statusEl.className = "text-lg font-bold text-emerald-600";
-                        statusHint.innerText = "Recibiendo votos.";
-                        statusDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0";
-                        toggleLabel.innerText = "Cerrar urna";
-                        toggleIcon.className = "fa-solid fa-lock";
-                    } else {
-                        statusEl.innerText = "Cerrada";
-                        statusEl.className = "text-lg font-bold text-rose-600";
-                        statusHint.innerText = "No se reciben votos.";
-                        statusDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500 shrink-0";
-                        toggleLabel.innerText = "Abrir urna";
-                        toggleIcon.className = "fa-solid fa-lock-open";
-                    }
-                }
-
-                const cardNat = document.getElementById('cardModeNational');
-                const cardUni = document.getElementById('cardModeUniversity');
-                if (data.mode === 'university') {
-                    cardUni.classList.add('ring-2', 'ring-emerald-500', 'border-emerald-500', 'bg-emerald-50/20');
-                    cardNat.classList.remove('ring-2', 'ring-blue-500', 'border-blue-500', 'bg-blue-50/20');
-                } else {
-                    cardNat.classList.add('ring-2', 'ring-blue-500', 'border-blue-500', 'bg-blue-50/20');
-                    cardUni.classList.remove('ring-2', 'ring-emerald-500', 'border-emerald-500', 'bg-emerald-50/20');
-                }
-
-                loadCensusVoters();
-            } catch (err) {
-                console.error("Error al cargar modo:", err);
-            }
-        }
-
-        async function switchElectionMode(newMode) {
-            if (newMode === currentMode) {
-                showToast(`El modo ${newMode.toUpperCase()} ya está activo.`, 'info');
-                return;
-            }
-            if (!confirm(`¿Cambiar a modo ${newMode.toUpperCase()}? Los votos de cada modalidad se conservan por separado y la urna se abrirá para la modalidad seleccionada.`)) {
-                return;
-            }
-            try {
-                const res = await apiFetch('/api/election/switch-mode', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ mode: newMode })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    showToast(`Modo electoral actualizado: ${data.election_title}`, 'success');
-                    loadElectionMode();
-                    loadAuditLogs();
-                } else {
-                    showToast(data.detail || 'Error al conmutar modo electoral.', 'error');
-                }
-            } catch (err) {
-                showToast('Error de conexión al cambiar modo.', 'error');
-            }
-        }
-
-        async function toggleUrna() {
-            if (isTallied) {
-                showToast('La jornada ya fue escrutada. Usa Reiniciar jornada para volver a abrir la urna.', 'info');
-                return;
-            }
-            const endpoint = isUrnaOpen ? '/api/election/close' : '/api/election/open';
-            try {
-                const res = await apiFetch(endpoint, { method: 'POST' });
-                if (res.ok) {
-                    loadElectionMode();
-                    loadAuditLogs();
-                } else {
-                    const err = await res.json();
-                    showToast(err.detail || 'Error al alterar estado de urna.', 'error');
-                }
-            } catch (err) {
-                showToast('Error de conexión con el servidor.', 'error');
-            }
-        }
-
-        async function resetElection() {
-            if (!confirm("¿Reiniciar la jornada? Se borrarán TODOS los votos y participaciones de la elección activa. El censo se conserva.")) {
-                return;
-            }
-            const confirmation = prompt('Escribe REINICIAR para confirmar:');
-            if (confirmation !== 'REINICIAR') {
-                return;
-            }
-            try {
-                const res = await apiFetch('/api/admin/reset-election', { method: 'POST' });
-                const data = await res.json();
-                if (res.ok) {
-                    showToast(`Jornada reiniciada. Papeletas eliminadas: ${data.removed_ballots}.`, 'success');
-                    loadElectionMode();
-                    loadAuditLogs();
-                } else {
-                    showToast(data.detail || 'No fue posible reiniciar la jornada.', 'error');
-                }
-            } catch (err) {
-                showToast('Error de conexión al reiniciar la jornada.', 'error');
-            }
-        }
-
-        async function generateOfficialTally() {
-            if (!confirm("¿Cerrar la urna y generar el acta? Después de esto la jornada queda escrutada y no se puede reabrir sin reiniciarla.")) {
-                return;
-            }
-            try {
-                const res = await apiFetch('/api/tally/generate', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        officer_signatures: ["JURADO-PRESIDENTE-TOKEN-991", "JURADO-VOCAL-TOKEN-882"]
-                    })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    const container = document.getElementById('tallyReportContainer');
-                    const pre = document.getElementById('tallyFormattedSummary');
-                    pre.innerText = data.formatted_summary;
-                    container.classList.remove('hidden');
-                    container.scrollIntoView({ behavior: 'smooth' });
-                    loadElectionMode();
-                    loadAuditLogs();
-                } else {
-                    showToast(data.detail || 'Error al generar acta oficial.', 'error');
-                }
-            } catch (err) {
-                showToast('Error de conexión al generar acta.', 'error');
-            }
-        }
-
-        async function loadCensusVoters() {
-            try {
-                const res = await apiFetch(`/api/census/voters?election_type=${encodeURIComponent(currentMode)}`);
-                const voters = await res.json();
-                const tbody = document.getElementById('censusTableBody');
-
-                if (!voters || voters.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">No hay electores registrados en este censo.</td></tr>`;
-                    return;
-                }
-
-                tbody.innerHTML = voters.map(v => {
-                    const badgeClass = v.is_eligible
-                        ? 'text-emerald-700 bg-emerald-50 border border-emerald-200'
-                        : 'text-rose-700 bg-rose-50 border border-rose-200';
-                    const badgeText = v.is_eligible ? 'Habilitado' : 'Inhabilitado';
-                    const btnClass = v.is_eligible
-                        ? 'text-rose-600 hover:bg-rose-50 border-rose-200'
-                        : 'text-emerald-600 hover:bg-emerald-50 border-emerald-200';
-                    const btnText = v.is_eligible ? 'Inhabilitar' : 'Habilitar';
-                    const targetStatus = !v.is_eligible;
-                    return `
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="py-2.5 px-3 font-mono font-semibold text-slate-900">${escapeHtml(v.document_id)}</td>
-                            <td class="py-2.5 px-3 text-slate-700">${escapeHtml(v.full_name)}</td>
-                            <td class="py-2.5 px-3 text-slate-500">${escapeHtml(v.assigned_station_id)}</td>
-                            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeClass}">${badgeText}</span></td>
-                            <td class="py-2.5 px-3 text-right">
-                                <button type="button"
-                                    class="btn-toggle-status text-[11px] font-semibold border px-2.5 py-1 rounded-lg transition ${btnClass}"
-                                    data-doc="${escapeHtml(v.document_id)}"
-                                    data-status="${targetStatus}">
-                                    ${btnText}
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
-
-                tbody.querySelectorAll('.btn-toggle-status').forEach((button) => {
-                    button.addEventListener('click', () => {
-                        toggleVoterStatus(button.dataset.doc, button.dataset.status === 'true');
-                    });
-                });
-            } catch (err) {
-                console.error("Error al cargar censo:", err);
-            }
-        }
-
-        async function handleRegisterVoter(e) {
-            e.preventDefault();
-            const docId = document.getElementById('censusDocId').value.trim();
-            const fullName = document.getElementById('censusFullName').value.trim();
-            const station = document.getElementById('censusStation').value.trim();
-            const pin = document.getElementById('censusPin').value.trim();
-            const eligible = document.getElementById('censusEligible').value === 'true';
-
-            try {
-                const res = await apiFetch('/api/census/voters', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        document_id: docId,
-                        full_name: fullName,
-                        assigned_station_id: station,
-                        is_eligible: eligible,
-                        pin: pin,
-                        election_type: currentMode.toUpperCase()
-                    })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    showToast(`Elector ${fullName} (${docId}) registrado. PIN: ${pin}`, 'success');
-                    document.getElementById('censusDocId').value = '';
-                    document.getElementById('censusFullName').value = '';
-                    document.getElementById('censusPin').value = '1234';
-                    loadCensusVoters();
-                    loadAuditLogs();
-                } else {
-                    showToast(data.detail || 'Error al inscribir elector.', 'error');
-                }
-            } catch (err) {
-                showToast('Error de conexión al inscribir elector.', 'error');
-            }
-        }
-
-        async function toggleVoterStatus(docId, newStatus) {
-            try {
-                const res = await apiFetch(`/api/census/voters/${encodeURIComponent(docId)}/status`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ is_eligible: newStatus })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    loadCensusVoters();
-                    loadAuditLogs();
-                } else {
-                    showToast(data.detail || 'Error al modificar estado.', 'error');
-                }
-            } catch (err) {
-                showToast('Error de conexión al modificar estado.', 'error');
-            }
-        }
-
-        async function loadAuditLogs() {
-            try {
-                const res = await apiFetch('/api/security/audit-log');
-                const logs = await res.json();
-                const tbody = document.getElementById('auditTableBody');
-
-                if (!logs || logs.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-400">Sin eventos auditados aún.</td></tr>`;
-                    return;
-                }
-
-                tbody.innerHTML = logs.slice().reverse().map(l => {
-                    const badgeColor = l.status === 'AUTORIZADO' || l.status === 'EXITOSO' || l.status === 'CONCLUIDO'
-                        ? 'text-emerald-700 bg-emerald-50 border border-emerald-200'
-                        : (l.status === 'RECHAZADO' || l.status === 'FALLIDO' ? 'text-rose-700 bg-rose-50 border border-rose-200' : 'text-blue-700 bg-blue-50 border border-blue-200');
-                    const time = String(l.timestamp || '').split('T')[1]?.slice(0, 8) || '';
-                    return `
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="py-2.5 px-3 text-slate-400">${escapeHtml(time)}</td>
-                            <td class="py-2.5 px-3 font-semibold text-slate-800">${escapeHtml(l.action)}</td>
-                            <td class="py-2.5 px-3">${escapeHtml(l.user_id)}</td>
-                            <td class="py-2.5 px-3 text-slate-500">${escapeHtml(l.role)}</td>
-                            <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold ${badgeColor}">${escapeHtml(l.status)}</span></td>
-                            <td class="py-2.5 px-3 text-slate-500 truncate max-w-xs" title="${escapeHtml(l.details)}">${escapeHtml(l.details)}</td>
-                        </tr>
-                    `;
-                }).join('');
-            } catch (err) {
-                console.error("Error al cargar auditoría:", err);
-            }
-        }
-    </script>
+    <script src="/static/js/admin.js"></script>
 </body>
 </html>

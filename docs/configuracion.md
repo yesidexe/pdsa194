@@ -1,6 +1,6 @@
 # Configuración y seguridad
 
-> Para la demo no necesitas este documento. La aplicación arranca con valores locales por defecto.
+> Para ejecutar la aplicación en local no necesitas este documento. Arranca con valores locales por defecto.
 
 ## 1. El archivo `.env`
 
@@ -102,13 +102,13 @@ SECRET_KEY=la_cadena_que_imprimio_el_comando
 
 Reinicia la aplicación y vuelve a entrar. No pongas la clave en `settings.py` ni en otro archivo de código: `.env` se lee al arrancar.
 
-> Las "firmas de jurados" del acta son códigos fijos de la simulación; no usan `SECRET_KEY` ni se guardan en la base de datos.
+> Las "firmas de jurados" del acta son códigos fijos de la jornada de prueba; no usan `SECRET_KEY` ni se guardan en la base de datos.
 
 ## 5. Uvicorn y `DEV_RELOAD`
 
 Uvicorn es el servidor que mantiene la aplicación encendida y escuchando en el puerto. FastAPI define las rutas; Uvicorn recibe las peticiones.
 
-Arranca la demo con:
+Arranca la aplicación con:
 
 ```bash
 python3 -m src.main
@@ -118,33 +118,33 @@ Ese comando usa `HOST`, `PORT` y `DEV_RELOAD` de `.env`.
 
 Si ejecutas `uvicorn src.main:app --host ... --port ...` directamente, esos valores de `.env` no se usan; mandan los argumentos del comando.
 
-`DEV_RELOAD=true` reinicia el servidor cuando guardas un archivo `.py`. No recarga solo el frontend: reinicia el backend completo. Es útil para desarrollar, pero para la demo déjalo en `false`: al reiniciar se pierde el estado en memoria (por ejemplo, si la urna estaba cerrada) y, con `AUTO_OPEN_POLLS=true`, la urna se vuelve a abrir. Los votos guardados en la base no se pierden.
+`DEV_RELOAD=true` reinicia el servidor cuando guardas un archivo `.py`. No recarga solo el frontend: reinicia el backend completo. Es útil para desarrollar, pero para una ejecución estable déjalo en `false`: al reiniciar se pierde el estado en memoria (por ejemplo, si la urna estaba cerrada) y, con `AUTO_OPEN_POLLS=true`, la urna se vuelve a abrir. Los votos guardados en la base no se pierden.
 
 ## 6. Scripts de apoyo
 
 Son opcionales. Ejecútalos desde la raíz con el entorno virtual activo y, preferiblemente, con la aplicación detenida.
 
-- `reset_db.py`: borra votos, participaciones y censo, y vuelve a sembrar el censo sintético. La base queda **sin votos, pero con las personas de demostración**.
-- `cast_demo_votes.py`: usa el censo existente y emite votos de prueba con el flujo de la cabina. **No agrega personas.** Rota entre los candidatos y cada sexto elector vota en blanco.
+- `reset_db.py`: borra votos, participaciones y censo, y vuelve a sembrar el censo sintético. La base queda **sin votos, pero con las personas de prueba**.
+- `cast_test_votes.py`: usa el censo existente y emite votos de prueba con el flujo de la cabina. **No agrega personas.** Rota entre los candidatos y cada sexto elector vota en blanco.
 - `hash_password.py`: genera el hash para `ADMIN_PASSWORD_HASH`. No toca la base.
 
-Para una demo limpia:
+Para un entorno limpio de prueba:
 
 ```bash
 ./venv/bin/python scripts/reset_db.py
-./venv/bin/python scripts/cast_demo_votes.py
+./venv/bin/python scripts/cast_test_votes.py
 python3 -m src.main
 ```
 
 Para modo universitario:
 
 ```bash
-ELECTION_MODE=university ./venv/bin/python scripts/cast_demo_votes.py
+ELECTION_MODE=university ./venv/bin/python scripts/cast_test_votes.py
 ```
 
 > `reset_db.py` no es lo mismo que **Reiniciar jornada**: el botón conserva el censo; el script lo borra y lo vuelve a sembrar.
 
-## 7. Seguridad para la demo
+## 7. Seguridad en entorno local
 
 - Usa solo datos sintéticos.
 - `HOST=127.0.0.1` limita el acceso a tu equipo. No uses `0.0.0.0` sin TLS y protecciones adicionales.

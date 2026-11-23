@@ -1,16 +1,16 @@
-"""Carga votos de prueba sobre el censo que ya existe.
+"""Carga votos de prueba sobre el censo existente.
 
 Uso:
     # Modo nacional (por defecto)
-    ./venv/bin/python scripts/cast_demo_votes.py
+    ./venv/bin/python scripts/cast_test_votes.py
 
     # Modo universitario
-    ELECTION_MODE=university ./venv/bin/python scripts/cast_demo_votes.py
+    ELECTION_MODE=university ./venv/bin/python scripts/cast_test_votes.py
 
 No llena el censo ni inserta filas a mano: usa los documentos y PIN de las
 personas ya registradas y vota por el mismo flujo HTTP de la cabina.
 Va rotando entre los candidatos y cada sexto elector vota en blanco, así que
-la demo es reproducible. Omite a quien ya votó o no está habilitado.
+la carga de prueba es reproducible. Omite a quien ya votó o no está habilitado.
 Sirve para que el dashboard no aparezca vacío. Ejecútalo antes de arrancar la app.
 """
 from __future__ import annotations

@@ -32,18 +32,7 @@ class ElectoralConfigManager:
                 self.institution_name = institution_name
                 self.election_title = election_title
                 self.max_votes_per_citizen = max_votes_per_citizen
-                self._is_open: bool = False
                 self._initialized = True
-
-    @property
-    def is_open(self) -> bool:
-        return self._is_open
-
-    def open_voting(self) -> None:
-        self._is_open = True
-
-    def close_voting(self) -> None:
-        self._is_open = False
 
     @classmethod
     def reset_for_testing(cls) -> None:

@@ -1,7 +1,7 @@
 """Módulo para la construcción paso a paso de actas electorales complejas."""
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 import hashlib
@@ -155,26 +155,4 @@ class OfficialTallyReportBuilder(TallyReportBuilder):
             officer_signatures=list(self._officer_signatures),
             integrity_hash=hash_digest,
             winner_verdict=self._winner_verdict,
-        )
-
-
-class TallyReportDirector:
-    """Director opcional que define secuencias estándar de ensamble de actas."""
-
-    def __init__(self, builder: TallyReportBuilder) -> None:
-        self._builder = builder
-
-    def construct_preliminary_bulletin(
-        self,
-        title: str,
-        jurisdiction: str,
-        tables: List[str],
-        votes: Dict[str, int],
-    ) -> ElectoralTallyReport:
-        return (
-            self._builder.reset()
-            .set_header(f"Boletín Preliminar - {title}", jurisdiction)
-            .add_table_batch(tables)
-            .set_votes(candidate_votes=votes, blank_votes=0, null_votes=0)
-            .build()
         )

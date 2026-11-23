@@ -30,7 +30,7 @@ La aplicación queda disponible en los siguientes módulos:
 | Acceso administrativo | http://127.0.0.1:8000/admin/login |
 | Documentación de la API | http://127.0.0.1:8000/docs |
 
-### 1.3 Credenciales de demostración
+### 1.3 Credenciales de prueba
 
 Con estas credenciales sintéticas puedes iniciar sesión en la cabina de votación o en el acceso administrativo.
 
@@ -44,7 +44,7 @@ Con estas credenciales sintéticas puedes iniciar sesión en la cabina de votaci
 | Nacional (CNE) | 41 | 37 | `99999999`, `20000001`, `20000013`, `20000025` |
 | Universitaria (UDI) | 41 | 37 | `EST-9999`, `EST-1001`, `EST-1013`, `EST-1025` |
 
-> El PIN `1234` es una credencial de simulación. No representa un mecanismo de autenticación de nivel electoral.
+> El PIN `1234` es una credencial de prueba. No representa un mecanismo de autenticación de nivel electoral.
 
 ---
 
@@ -131,12 +131,13 @@ El acceso usa una única cuenta local. La sesión se guarda en una cookie `HttpO
 |---|---|
 | **Cambiar modalidad** | Alterna entre Elección Nacional y Universitaria. Los votos de cada modalidad se conservan por separado. |
 | **Control de urna** | Abre o cierra la jornada. Cerrar bloquea nuevos votos; si no se generó acta, se puede volver a abrir. |
-| **Cierre y acta** | Cierra la urna, cuenta los votos, calcula el ganador y aplica el sello SHA-256. No se puede deshacer. |
-| **Reiniciar jornada** | Borra los votos y participaciones de la elección activa; **conserva el censo**. |
+| **Cierre y acta** | Cierra la urna, cuenta los votos, calcula el ganador y aplica el sello SHA-256. No se puede reabrir sin reiniciar la jornada. |
+| **Reiniciar jornada** | Borra los votos y participaciones de la elección activa; **conserva el censo** y deja la jornada en **borrador**. |
 | **Censo electoral** | Lista, inscribe, actualiza y habilita/inhabilita electores. |
-| **Bitácora** | Muestra los eventos de verificación, emisión, apertura, cierre, acta y reset. |
+| **Catálogo de candidatos** | Registra, edita y activa/desactiva candidatos. Solo se puede editar en borrador o con la urna cerrada y sin votos. |
+| **Bitácora** | Muestra los eventos de verificación, emisión, apertura, cierre, acta y reset; se guarda en SQLite. |
 
-> El acta es la finalización de la jornada: después de generarla, la urna queda cerrada y escrutada. Para repetir, usa **Reiniciar jornada**.
+> El acta es la finalización de la jornada: después de generarla, la urna queda cerrada y escrutada. Para repetir, usa **Reiniciar jornada**; la jornada queda en borrador y debes abrirla de nuevo.
 
 > No existe un borrado de voto individual: eso obligaría a vincular identidad y papeleta.
 
@@ -148,7 +149,7 @@ El acceso usa una única cuenta local. La sesión se guarda en una cookie `HttpO
 
 - La cabina consulta el estado de la urna cada **5 segundos** y la modalidad cada **10 segundos**. Si el administrador cierra la urna, el botón de verificación se deshabilita y cambia a “Urna cerrada”.
 - El dashboard se refresca cada **5 segundos** y cambia su botón de cabina por “Urna cerrada” cuando la jornada está bloqueada.
-- El panel administrativo refresca estado, censo y bitácora cada **10 segundos**, sin necesidad de pulsar “Actualizar”.
+- El panel administrativo refresca estado, censo, candidatos y bitácora cada **10 segundos**, sin necesidad de pulsar “Actualizar”.
 
 ### 3.4 Qué muestra el acta
 
@@ -159,7 +160,9 @@ Al generar el acta, el panel muestra:
 - Votos en blanco.
 - Veredicto según la regla de la modalidad.
 - Sello SHA-256 del acta.
-- Firmas de jurados de la simulación.
+- Firmas de jurados de la jornada de prueba.
+
+El acta queda guardada en la base y se puede consultar en `GET /api/tally/latest` o descargar como JSON/CSV desde `GET /api/tally/latest/export?format=json|csv`. La bitácora se exporta desde el panel con sesión de administrador (`/api/security/audit-log/export`).
 
 ---
 
@@ -171,7 +174,7 @@ Al generar el acta, el panel muestra:
 | `ModuleNotFoundError: src` | Se ejecutó `python src/main.py` | Usar `python3 -m src.main`. |
 | El elector no puede votar | PIN incorrecto, documento inhabilitado o ya votó | Revisar el censo en el panel; usar otro documento o reiniciar la jornada. |
 | El panel redirige al login | Sesión vencida o cookie eliminada | Volver a iniciar sesión. |
-| El dashboard muestra 0 votos | La jornada se reinició o no hay votos | Emitir votos de prueba o ejecutar el script de demostración. |
+| El dashboard muestra 0 votos | La jornada se reinició o no hay votos | Emitir votos de prueba o ejecutar el script de datos de prueba. |
 | Error de base de datos bloqueada | Demasiadas escrituras simultáneas en SQLite | Reintentar; para producción se recomienda PostgreSQL. |
 
 **Verificación rápida:** `pytest -q`

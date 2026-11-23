@@ -1,8 +1,9 @@
 """Módulo para la creación de papeletas de votación desacopladas."""
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Optional
 import uuid
 
 

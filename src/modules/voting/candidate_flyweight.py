@@ -1,7 +1,7 @@
 """Módulo para optimización de memoria de opciones electorales mediante el patrón Flyweight."""
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 
 @dataclass(frozen=True)

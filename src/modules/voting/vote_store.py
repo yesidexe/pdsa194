@@ -126,19 +126,6 @@ def list_ballots(election_type: str) -> List[StoredBallot]:
         session.close()
 
 
-def count_votes(election_type: str) -> int:
-    """Cuenta las papeletas almacenadas para una elección."""
-    session = SessionLocal()
-    try:
-        return (
-            session.query(BallotRecordModel)
-            .filter(BallotRecordModel.election_type == election_type)
-            .count()
-        )
-    finally:
-        session.close()
-
-
 def reset_election(election_type: str) -> int:
     """Borra votos y participaciones de una elección; conserva el censo.
 

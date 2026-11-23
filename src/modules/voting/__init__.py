@@ -19,6 +19,11 @@ from src.modules.voting.candidate_flyweight import (
     CandidateMetadataFlyweight,
     CandidateFlyweightFactory,
 )
+from src.modules.voting.voter_validation import (
+    VoterValidationChain,
+    VoterValidationContext,
+    VoterValidationError,
+)
 
 __all__ = [
     "Ballot",
@@ -35,4 +40,7 @@ __all__ = [
     "AuditWatermarkDecorator",
     "CandidateMetadataFlyweight",
     "CandidateFlyweightFactory",
+    "VoterValidationChain",
+    "VoterValidationContext",
+    "VoterValidationError",
 ]
