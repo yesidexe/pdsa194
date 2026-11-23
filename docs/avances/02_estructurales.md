@@ -161,20 +161,8 @@ Bridge descartado.
   autenticación, alta y habilitación en SQLite.
 - `tests/integration/test_census_and_dashboard.py` cubre el censo desde la API.
 
-**Límite honesto.** Hay un solo adaptador real (SQLite). JSON y CSV son
+**Límite.** Hay un solo adaptador real (SQLite). JSON y CSV son
 alternativas de integración y prueba; no se presentan como producción.
-
-## 1.7 Preguntas de revisión de diseño
-
-**¿Esto no es solo una interfaz?**
-La interfaz es el Target. El patrón aparece cuando cada fuente tiene su propio
-formato y se traduce a un DTO común. La traducción es la parte adaptadora.
-
-**¿Por qué el adaptador SQLite también escribe?**
-Porque el panel necesita inscribir y habilitar electores. La escritura está
-separada en `CensusService`, pero comparte el mismo contrato de lectura.
-
----
 
 # 2. Decorator
 
@@ -291,21 +279,9 @@ timestamp son metadatos, no sellos de tiempo externos.
 - `tests/integration/test_voting_flow.py::test_secure_vote_and_duplicate` verifica
   que el voto real salga con las tres capas.
 
-**Límite honesto.** El sistema no cifra el voto ni usa Ed25519. HMAC es
+**Límite.** El sistema no cifra el voto ni usa Ed25519. HMAC es
 integridad con clave compartida; se documenta como límite, no como garantía de
 no repudio.
-
-## 2.7 Preguntas de revisión de diseño
-
-**¿Decorator no es herencia disfrazada?**
-No. La papeleta se envuelve en tiempo de ejecución y las capas se combinan por
-composición. La herencia fijaría la combinación en compilación.
-
-**¿Proxy y Decorator no son lo mismo?**
-Estructuralmente ambos envuelven. Decorator **añade comportamiento**; Proxy
-**controla el acceso** y puede decidir no delegar.
-
----
 
 # 3. Facade
 
@@ -426,21 +402,8 @@ interactuando, hay clientes llamando casos de uso.
   `test_admin_flow.py`, `test_candidates_and_tally.py`.
 - El Proxy agrega autorización y auditoría sin que la fachada lo sepa.
 
-**Límite honesto.** Sigue siendo el punto de entrada y puede crecer si se le
+**Límite.** Sigue siendo el punto de entrada y puede crecer si se le
 agregan métodos. La regla es que solo coordine; la lógica nueva va a un servicio.
-
-## 3.7 Preguntas de revisión de diseño
-
-**¿La fachada no es solo un wrapper?**
-No. Define el orden del caso de uso y oculta varios subsistemas. Un wrapper
-delegaría una sola llamada; la fachada coordina validación, emisión, conteo y
-persistencia.
-
-**¿Por qué no llamar a los servicios directamente desde la API?**
-Porque la API tendría que conocer el orden y las dependencias. La fachada
-mantiene ese conocimiento en un solo lugar.
-
----
 
 # 4. Flyweight
 
@@ -555,21 +518,9 @@ objetos. Aquí el pool también funciona como catálogo.
 - `tests/integration/test_candidates_and_tally.py` verifica que el CRUD refresque
   el catálogo y que un candidato inactivo no aparezca en el tarjetón.
 
-**Límite honesto.** No es una optimización crítica. La papeleta guarda una
+**Límite.** No es una optimización crítica. La papeleta guarda una
 etiqueta de selección para que el histórico siga siendo legible si el catálogo
 cambia.
-
-## 4.7 Preguntas de revisión de diseño
-
-**¿No es simplemente una caché?**
-Se parece, pero la intención es compartir estado intrínseco inmutable, no acelerar
-consultas. El pool también actúa como catálogo oficial.
-
-**¿Qué pasa si cambia el nombre de un candidato?**
-Se actualiza la tabla `candidates` y se refresca el pool. Las papeletas antiguas
-conservan su `selection`; no se reescribe el histórico.
-
----
 
 # 5. Proxy
 
@@ -681,21 +632,9 @@ siempre envuelve y añade comportamiento.
   persistente y detección de alteraciones.
 - `tests/integration/test_candidates_and_tally.py` cubre el CRUD protegido.
 
-**Límite honesto.** La bitácora es tamper-evident, no tamper-proof: un
+**Límite.** La bitácora es tamper-evident, no tamper-proof: un
 administrador con acceso a la base podría reescribir la cadena completa. Para
 producción se necesitarían firmas asimétricas, WORM y auditoría externa.
-
-## 5.7 Preguntas de revisión de diseño
-
-**¿El Proxy autentica al administrador?**
-No. Autentica `auth.py` con usuario, contraseña y cookie firmada. El Proxy solo
-autoriza según el rol de la sesión.
-
-**¿Por qué la auditoría no vive en la fachada?**
-Porque la auditoría es una preocupación transversal de acceso. El Proxy la
-centraliza y la fachada se concentra en el negocio.
-
----
 
 # 6. Bridge (evaluado y descartado)
 

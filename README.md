@@ -95,7 +95,7 @@ La plataforma implementa **12 patrones de diseño GoF**, equilibrados por catego
 | Estructurales | Adapter, Decorator, Facade, Flyweight, Proxy y los descartados Bridge y Composite. | [Abrir](docs/avances/02_estructurales.md) |
 | Comportamiento | State, Chain of Responsibility, Observer y los ocho patrones evaluados y no adoptados. | [Abrir](docs/avances/03_comportamiento.md) |
 
-Las decisiones de arquitectura están en [`docs/adr/`](docs/adr/): local-first, selección de los 12 patrones, persistencia de estado/auditoría y catálogo de candidatos.
+Las decisiones de arquitectura están en [`docs/adr/`](docs/adr/): local-first, selección de los 12 patrones, persistencia de estado/auditoría y catálogo de candidatos. Los diagramas UML están en [`docs/uml/`](docs/uml/).
 
 ---
 

@@ -221,21 +221,8 @@ un solo proceso.
 - `tests/integration/test_census_and_dashboard.py::test_reset_election_keeps_census`
   verifica que el reset deje `DRAFT` y conserve el censo.
 
-**Límite honesto.** No hay bloqueo optimista ni transacciones de estado entre
+**Límite.** No hay bloqueo optimista ni transacciones de estado entre
 procesos. Para producción habría que agregar control de concurrencia.
-
-## 1.7 Preguntas de revisión de diseño
-
-**¿State no es un `switch` con clases?**
-Es un `switch` con polimorfismo: cada estado encapsula sus transiciones y el
-contexto no decide con condicionales. La diferencia es que las reglas quedan
-aisladas y testables.
-
-**¿Por qué `reset` deja `DRAFT` y no `OPEN`?**
-Porque reiniciar es una operación destructiva. Obligar a abrir de nuevo evita que
-la urna reciba votos sin una acción administrativa explícita.
-
----
 
 # 2. Chain of Responsibility
 
@@ -367,21 +354,9 @@ porque hay cinco validaciones reales; con una o dos, un `if` sería más claro.
 - `tests/integration/test_voting_flow.py::test_secure_vote_and_duplicate` cubre
   el doble voto en la emisión.
 
-**Límite honesto.** La cadena no reemplaza la transacción ni la restricción
+**Límite.** La cadena no reemplaza la transacción ni la restricción
 única. La comprobación previa ayuda a dar un mensaje claro; la base es la
 garantía final.
-
-## 2.7 Preguntas de revisión de diseño
-
-**¿Por qué no un `if` lineal?**
-Con cinco reglas y mensajes distintos, el `if` se vuelve un método largo y difícil
-de probar por partes. Chain separa cada regla.
-
-**¿La cadena garantiza el voto único?**
-No. La garantía es la restricción única de `voter_participation` y la transacción
-de `register_vote`.
-
----
 
 # 3. Observer
 
@@ -521,22 +496,10 @@ firmas asimétricas, WORM y anclaje externo.
 - `tests/integration/test_admin_flow.py::test_audit_log_can_be_exported`
   verifica descarga JSON/CSV.
 
-**Límite honesto.** El observador SQLite es la fuente de verdad; el log JSON es
+**Límite.** El observador SQLite es la fuente de verdad; el log JSON es
 secundario. Si la escritura de auditoría falla, el Proxy registra el fallo en el
 log técnico, pero no revierte una operación ya confirmada. En producción se
 usaría una outbox transaccional.
-
-## 3.7 Preguntas de revisión de diseño
-
-**¿Observer no es solo un event bus?**
-Es el mismo mecanismo: sujeto, lista de observadores y notificación. La diferencia
-es el propósito: desacoplar la auditoría de sus destinos.
-
-**¿Por qué no guardar la auditoría en el mismo Proxy?**
-Porque el Proxy se acoplaría a la base y al formato de log. Observer permite
-agregar destinos sin tocarlo.
-
----
 
 # 4. Evaluados y no adoptados
 

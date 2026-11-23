@@ -164,21 +164,9 @@ el punto de extensión para la reconstrucción.
 - El estado de la urna tiene pruebas propias en
   `tests/unit/test_state_machine.py`.
 
-**Límite honesto.** Con varios workers de Uvicorn habría una instancia por
+**Límite.** Con varios workers de Uvicorn habría una instancia por
 proceso. Para un despliegue real, la configuración debería venir de variables de
 entorno inyectadas o de un almacén compartido, no de un singleton en memoria.
-
-## 1.7 Preguntas de revisión de diseño
-
-**¿Por qué no guardar también `is_open` aquí?**
-Porque el estado de la urna cambia con cada operación y debe persistir. Mezclarlo
-con la configuración estática fue el problema que se corrigió al introducir State.
-
-**¿Singleton no es un antipatrón?**
-Puede serlo cuando se usa como cajón de sastre. Aquí tiene un alcance acotado:
-tres datos de configuración y una operación de reconstrucción controlada.
-
----
 
 # 2. Factory Method
 
@@ -317,22 +305,9 @@ parámetros en un solo punto de cambio.
 - `tests/integration/test_voting_flow.py` cubre la emisión real de candidato y
   blanco.
 
-**Límite honesto.** `ReferendumBallot` existe en el dominio y en la API, pero la
+**Límite.** `ReferendumBallot` existe en el dominio y en la API, pero la
 cabina no ofrece una pantalla de referendo. Es un punto de extensión, no una
 funcionalidad terminada.
-
-## 2.7 Preguntas de revisión de diseño
-
-**¿Por qué no usar simplemente un `if`?**
-Con dos tipos sería aceptable. Con tres y con posibilidades de crecer, el `if`
-termina en el servicio de voto y en el conteo. El patrón deja un único punto de
-extensión.
-
-**¿Factory Method crea familias?**
-No. Crea un producto mediante herencia de creadores. Las familias son
-responsabilidad de Abstract Factory.
-
----
 
 # 3. Abstract Factory
 
@@ -468,20 +443,9 @@ más corto para dos modalidades, pero repartiría la coherencia en condicionales
 - `tests/integration/test_admin_flow.py::test_abstract_factory_mode_switching`
   conmuta a universidad, vota y escruta con la regla de mayoría simple.
 
-**Límite honesto.** Con solo dos familias, Abstract Factory es discutible. Se
+**Límite.** Con solo dos familias, Abstract Factory es discutible. Se
 mantiene porque las piezas son reales y cambian juntas; si el dominio se quedara
 en una sola modalidad, sobraría.
-
-## 3.7 Preguntas de revisión de diseño
-
-**¿Abstract Factory no es sobreingeniería para dos modalidades?**
-Podría serlo si solo cambiara el título. Aquí cambian documento, encabezado y
-regla; la fábrica evita combinaciones inválidas.
-
-**¿Dónde se elige la familia?**
-En el composition root (`src/main.py`), no en la API ni en el frontend.
-
----
 
 # 4. Builder
 
@@ -618,20 +582,9 @@ suelto habría perdido el orden, la validación y el sello calculado al final.
 - `tests/integration/test_candidates_and_tally.py::test_tally_is_persisted_and_exportable`
   verifica que el acta quede en `tally_reports` y se pueda descargar.
 
-**Límite honesto.** El acta se persiste y se exporta en JSON/CSV; el PDF oficial
+**Límite.** El acta se persiste y se exporta en JSON/CSV; el PDF oficial
 y la firma asimétrica siguen como trabajo futuro. El hash actual es de
 integridad, no de no repudio.
-
-## 4.7 Preguntas de revisión de diseño
-
-**¿Builder no es solo un constructor largo?**
-No. El valor está en el proceso por etapas, el estado parcial controlado y el
-sellado final. Un constructor de diez parámetros no ofrece nada de eso.
-
-**¿Dónde se guarda el acta?**
-En `tally_reports`; la jornada solo pasa a `TALLIED` después de persistirla.
-
----
 
 # 5. Prototype (evaluado y descartado)
 
